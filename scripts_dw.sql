@@ -193,14 +193,20 @@ SELECT CargaTiempo();
 
 CREATE TABLE tmpVentas (
 	fecha_vta timestamp,
-	Id-Factura int,
+	Id_Factura int,
 	Id_Cliente int,
 	Id_Producto int,
 	Id_Sucursal int,
-	Id-Medio_pago int,
+	forma_pago varchar(30),
 	monto_vendido real,
 	cantidad_vendida real,
+	nombre_producto varchar(30),
+	categ_prod int,
+	precio real,
+	nombre_cliente varchar(30),
+	tipo_cliente varchar(30)
 )
+DROP TABLE tmpVentas;
 
 /*
 La idea del script de ETL es traer al Data Warehouse una gran tabla con todos los datos a incorporar 
@@ -218,22 +224,20 @@ DECLARE
 
 BEGIN
 
-	INSERT INTO tmpVentas(fecha_vta, Id-Factura, Id_Cliente, Id_Producto, Id_Sucursal, Id-Medio_pago, monto_vendido, cantidad_vendida)
-	SELECT * FROM dblink ('conect_sv', "SELECT fecha_vta, nro_factura, nro_cliente, nro_producto, " + pSuc + "as Id_Sucursal, cod_medio_pago, unidad * precio as monto_vendido, unidad as cantidad_vendida, 
-	p.nombre, p.idCategoria, p.idSubCategoria, precio, c.nombre, c.tipo FROM ventas v, detalle_venta dv, clientes c, producto p
-	WHERE v.idFactura = dv.idFactura and v.cod_cliente = c.nro_cliente and dv.cod_producto = p.cod_producto and date_part (‘month’, fecha_vta) =  "+ pMes + "
-	and date_part (‘year’, fecha_vta) = " + pAño)
-	AS tmpvent (fecha_vta timestamp, Id-Factura int, Id_Cliente int, Id_Producto int, Id_Sucursal int, Id-Medio_pago int, monto_vendido real, cantidad_vendida real);
+	INSERT INTO tmpVentas(fecha_vta, Id_Factura, Id_Cliente, Id_Producto, Id_Sucursal, forma_pago, monto_vendido, cantidad_vendida)
+	SELECT * FROM dblink ('conect_sv', 'SELECT fecha_vta, v.nro_factura, c.nro_cliente, p.nro_producto, ' + pSuc + 'as Id_Sucursal, forma_pago, unidad * precio as monto_vendido, unidad as cantidad_vendida, 
+	p.nombre, p.nro_categ, precio, c.nombre, c.tipo FROM ventas v, detalle_venta dv, clientes c, producto p
+	WHERE v.idFactura = dv.idFactura and v.cod_cliente = c.nro_cliente and dv.cod_producto = p.cod_producto and date_part (‘month’, fecha_vta) =  '+ pMes + '
+	and date_part (‘year’, fecha_vta) = ' + pAño)
+	AS tmpvent (fecha_vta timestamp, nro_factura int, Id_Cliente int, Id_Producto int, Id_Sucursal int, forma_pago char(30), monto_vendido int, cantidad_vendida int, 
+	nombre_producto varchar(30), cat_prod int, precio real, nombre_cliente varchar(30), tipo_cliente varchar(30));
 
 END;
 $$ LANGUAGE plpgsql;
 
-
-SELECT * FROM dblink ('conect_sv', 'SELECT fecha_vta, v.nro_factura, c.nro_cliente, p.nro_producto, forma_pago, unidad * precio as monto_vendido, unidad as cantidad_vendida, 
-p.nombre, p.nro_categ, precio, c.nombre, c.tipo FROM venta v, detalle_venta dv, clientes c, producto p 
-WHERE v.nro_factura = dv.nro_factura and v.nro_cliente = c.nro_cliente and dv.nro_producto = p.nro_producto')
-AS tmpvent (fecha_vta timestamp, nro_factura int, Id_Cliente int, Id_Producto int, forma_pago char(30), monto_vendido int, cantidad_vendida int);
+SELECT CargaTmpVentas (1,5,2018);
 
 SELECT dblink_connect('conect_sv', 'hostaddr=192.168.1.112 port=5432 dbname=SISTEMA-1 user=postgres password=postgres');
+SELECT dblink_disconnect('conect_sv');
 --Donde pSuc, pMes, pAño serían los parámetros que recibe la función ETL 
 --y que los pasa en la instrucción SELECT concatenados, al DBLINK
