@@ -154,6 +154,7 @@ CREATE TABLE VENTAS (
 	Id_Tiempo int,
 	fecha timestamp,
 	Id_Factura int,
+	Id_Cliente int,
 	Id_Producto int,
 	Id_Sucursal int,
 	Id_MedioPago int,
@@ -190,6 +191,17 @@ $$ LANGUAGE plpgsql;
 SELECT CargaTiempo();
 
 
+CREATE TABLE tmpVentas (
+	fecha_vta timestamp,
+	Id-Factura int,
+	Id_Cliente int,
+	Id_Producto int,
+	Id_Sucursal int,
+	Id-Medio_pago int,
+	monto_vendido real,
+	cantidad_vendida real,
+)
+
 /*
 La idea del script de ETL es traer al Data Warehouse una gran tabla con todos los datos a incorporar 
 y guardarla en una tabla temporal, que no tenga claves foráneas a las tablas de dimensión para luego 
@@ -200,18 +212,28 @@ Desde esta tabla temporal tmpVentas se harán las inserciones a: Clientes, Produ
 
 Ejemplo para traer por dblink todos los datos necesarios a una temporal en el data wharehouse*/
 
-SELECT * 
-INTO tmpVentas
-FROM DBLINK ('conect_sv', 
-“SELECT fecha_vta, nro_factura, nro_cliente, nro_producto, “ + pSuc +  
-“as idSucursal, cod_medio_pago, unidad * precio as monto_vendido, unidad as cantidad_vendida, 
-p.nombre, p.idCategoria, p.idSubCategoria, precio, c.nombre, c.tipo	
-FROM ventas v, detalle_venta dv, clientes c, producto p
-WHERE v.idFactura = dv.idFactura and
-             and v.cod_cliente = c.nro_cliente
-            and dv.cod__producto = p.cod_producto
-            and date_part ( ‘month’,   fecha) =  “+ pMes + “
-            and date_part (‘year’,  fecha) = “ + pAño  )
+CREATE OR REPLACE FUNCTION CargaTmpVentas(pSuc int, pMes int, pAño int) RETURNS VOID AS
+$$
+DECLARE
+
+BEGIN
+
+	INSERT INTO tmpVentas(fecha_vta, Id-Factura, Id_Cliente, Id_Producto, Id_Sucursal, Id-Medio_pago, monto_vendido, cantidad_vendida)
+	SELECT * FROM dblink ('conect_sv', "SELECT fecha_vta, nro_factura, nro_cliente, nro_producto, " + pSuc + "as Id_Sucursal, cod_medio_pago, unidad * precio as monto_vendido, unidad as cantidad_vendida, 
+	p.nombre, p.idCategoria, p.idSubCategoria, precio, c.nombre, c.tipo FROM ventas v, detalle_venta dv, clientes c, producto p
+	WHERE v.idFactura = dv.idFactura and v.cod_cliente = c.nro_cliente and dv.cod_producto = p.cod_producto and date_part (‘month’, fecha_vta) =  "+ pMes + "
+	and date_part (‘year’, fecha_vta) = " + pAño)
+	AS tmpvent (fecha_vta timestamp, Id-Factura int, Id_Cliente int, Id_Producto int, Id_Sucursal int, Id-Medio_pago int, monto_vendido real, cantidad_vendida real);
+
+END;
+$$ LANGUAGE plpgsql;
+
+
+SELECT * FROM dblink ('conect_sv', 'SELECT fecha_vta, nro_factura, nro_cliente, nro_producto, cod_medio_pago, unidad * precio as monto_vendido, unidad as cantidad_vendida, 
+p.nombre, p.idCategoria, p.idSubCategoria, precio, c.nombre, c.tipo FROM ventas v, detalle_venta dv, clientes c, producto 
+WHERE v.idFactura = dv.idFactura and v.cod_cliente = c.nro_cliente and dv.cod_producto = p.cod_producto')
+AS tmpvent (fecha_vta timestamp, nro_factura int, Id_Cliente int, Id_Producto int, Id-Medio_pago char(30), monto_vendido real, cantidad_vendida real);
+
 
 --Donde pSuc, pMes, pAño serían los parámetros que recibe la función ETL 
 --y que los pasa en la instrucción SELECT concatenados, al DBLINK

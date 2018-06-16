@@ -21,7 +21,7 @@ CREATE TABLE PRODUCTO(
 nro_producto int NOT NULL, 
 nombre varchar(30) NULL,
 nro_categ int NOT NULL,
-precio_actual float NULL, 
+precio_actual real NULL, 
 CONSTRAINT PK_NRO_PRODUCTO PRIMARY KEY (nro_producto)
 );
 
@@ -40,7 +40,7 @@ fecha_vta timestamp DEFAULT current_timestamp,
 nro_factura int NOT NULL,
 nro_cliente int NOT NULL,
 nombre varchar(30) NULL, 
-forma_pago char(30) NULL,
+forma_pago varchar(30) NULL,
 CONSTRAINT PK_NRO_FACTURA PRIMARY KEY (nro_factura)
 );
 
@@ -50,8 +50,8 @@ CREATE TABLE DETALLE_VENTA(
 nro_factura int NOT NULL,
 nro_producto int NOT NULL,
 descripción varchar(30) NULL, 
-unidad int NULL,
-precio int NULL
+unidad real NULL,
+precio real NULL
 );
 
 ALTER TABLE PRODUCTO
