@@ -203,7 +203,7 @@ Ejemplo para traer por dblink todos los datos necesarios a una temporal en el da
 SELECT * 
 INTO tmpVentas
 FROM DBLINK ('conect_sv', 
-“SELECT fecha, idFactura, idCliente, idProducto, “ + pSuc +  
+“SELECT fecha_vta, nro_factura, nro_cliente, nro_producto, “ + pSuc +  
 “as idSucursal, cod_medio_pago, unidad * precio as monto_vendido, unidad as cantidad_vendida, 
 p.nombre, p.idCategoria, p.idSubCategoria, precio, c.nombre, c.tipo	
 FROM ventas v, detalle_venta dv, clientes c, producto p
