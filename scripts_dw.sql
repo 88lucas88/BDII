@@ -14,28 +14,26 @@ CREATE TABLE TEProductos (
 	CONSTRAINT pk_teproductos PRIMARY KEY (pdw)
 );
 
---conexion a BD cliente SN
-SELECT dblink_connect('conect_sn', 'hostaddr=192.168.1.112 port=5432 dbname=SISTEMA-2 user=postgres password=postgres');
-INSERT INTO TECliente (cns)
-	SELECT cod_cliente FROM dblink('conect_sn','SELECT cod_cliente FROM CLIENTES') AS cliente(cod_cliente text);
-SELECT dblink_disconnect('conect_sn');
+SELECT dblink_connect('conect_suc1', 'hostaddr=192.168.1.112 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres');
+SELECT dblink_disconnect('conect_suc1');
 
---conexion a BD cliente SV
-SELECT dblink_connect('conect_sv', 'hostaddr=192.168.1.112 port=5432 dbname=SISTEMA-1 user=postgres password=postgres');
+INSERT INTO TECliente (cns)
+	SELECT cod_cliente FROM dblink('conect_suc1','SELECT cod_cliente FROM "SISTEMA-2".CLIENTES') AS cliente(cod_cliente text);
+
 INSERT INTO TECliente (cvs)
-	SELECT nro_cliente FROM dblink('conect_sv','SELECT nro_cliente FROM CLIENTES') AS cliente(nro_cliente integer);
-SELECT dblink_disconnect('conect_sv');
+	SELECT nro_cliente FROM dblink('conect_suc1','SELECT nro_cliente FROM "SISTEMA-1".CLIENTES') AS cliente(nro_cliente integer);
 
 --Aplicación de UPDATE y DELETE manuales a la tabla TEClientes casos que corresponden al mismo cliente
 UPDATE TEClientes SET cvs = 23 WHERE cns = 1; --EJEMPLO
 DELETE FROM TEClientes WHERE cvs = 55;
 
---conexion a BD Productos SN
+--Insercion de productos de ambos sistemas en Tabla de equivalencia de productos
 INSERT INTO TEProductos (pns)
-	SELECT cod_producto FROM dblink('conect_sn','SELECT cod_producto FROM PRODUCTO') AS productos(cod_producto text);
+	SELECT cod_producto FROM dblink('conect_suc1','SELECT cod_producto FROM "SISTEMA-2".PRODUCTO') AS productos(cod_producto text);
 
 INSERT INTO TEProductos (pvs)
-	SELECT nro_producto FROM dblink('conect_sv','SELECT nro_producto FROM PRODUCTO') AS productos(nro_producto integer);
+	SELECT nro_producto FROM dblink('conect_suc1','SELECT nro_producto FROM "SISTEMA-1".PRODUCTO') AS productos(nro_producto integer);
+
 
 --Aplicación de UPDATE y DELETE manuales a la tabla TEProductos casos que corresponden al mismo producto
 UPDATE TEProductos SET pvs = 23 WHERE pns = 1; --EJEMPLO
@@ -49,7 +47,7 @@ CREATE TABLE MEDIO_PAGO(
 );
 
 INSERT INTO MEDIO_PAGO (Id_MedioPago,descripción)
-	SELECT cod_medio_pago,descripción FROM dblink('conect_sn','SELECT cod_medio_pago, descripción FROM MEDIO_PAGO') AS medio(cod_medio_pago int, descripción varchar(30));
+	SELECT cod_medio_pago,descripción FROM dblink('conect_suc1','SELECT cod_medio_pago, descripción FROM "SISTEMA-2".MEDIO_PAGO') AS medio(cod_medio_pago int, descripción varchar(30));
 
 -- Categoria (cod_categoria,  cod_subcategoría, descripción)
 CREATE TABLE CATEGORIA(
@@ -60,7 +58,7 @@ CREATE TABLE CATEGORIA(
 );
 
 INSERT INTO CATEGORIA (Id_Categoria, Id_subcategoria, descripcion)
-	SELECT cod_categoria, cod_subcategoria, descripcion FROM dblink('conect_sn','SELECT cod_categoria, cod_subcategoria, descripcion FROM CATEGORIA') AS categoria(cod_categoria text, cod_subcategoria int, descripcion varchar(30));
+	SELECT cod_categoria, cod_subcategoria, descripcion FROM dblink('conect_suc1','SELECT cod_categoria, cod_subcategoria, descripcion FROM "SISTEMA-2".CATEGORIA') AS categoria(cod_categoria text, cod_subcategoria int, descripcion varchar(30));
 
 -- Tipo_Cliente (Id_Tipo, descripción)
 CREATE TABLE TIPO_CLIENTE(
@@ -70,7 +68,7 @@ CREATE TABLE TIPO_CLIENTE(
 );
 
 INSERT INTO TIPO_CLIENTE (Id_Tipo, descripcion)
-	SELECT cod_tipo, descripcion FROM dblink('conect_sn','SELECT cod_tipo, descripcion FROM TIPO_CLIENTE') AS tipo_cliente(cod_tipo int, descripcion varchar(30));
+	SELECT cod_tipo, descripcion FROM dblink('conect_suc1','SELECT cod_tipo, descripcion FROM "SISTEMA-2".TIPO_CLIENTE') AS tipo_cliente(cod_tipo int, descripcion varchar(30));
 
 --TABLA SUCURSAL
 CREATE TABLE SUCURSAL (
@@ -237,7 +235,5 @@ $$ LANGUAGE plpgsql;
 
 SELECT CargaTmpVentas (1,5,2018);
 
-SELECT dblink_connect('conect_sv', 'hostaddr=192.168.1.112 port=5432 dbname=SISTEMA-1 user=postgres password=postgres');
-SELECT dblink_disconnect('conect_sv');
 --Donde pSuc, pMes, pAño serían los parámetros que recibe la función ETL 
 --y que los pasa en la instrucción SELECT concatenados, al DBLINK
