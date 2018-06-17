@@ -1,13 +1,28 @@
-﻿CREATE EXTENSION dblink;
+﻿
+CREATE TABLE "SISTEMA-1".TECliente (
+	cdw serial,
+	cvs integer DEFAULT NULL,
+	cns text DEFAULT NULL,
+	CONSTRAINT pk_tecliente PRIMARY KEY (cdw)
+);
+
+INSERT INTO "SISTEMA-1".TECliente (cvs)
+	SELECT nro_cliente
+	FROM (SELECT nro_cliente FROM "SISTEMA-1".Clientes) AS cv
+
+INSERT INTO "SISTEMA-1".TECliente (cns)
+	SELECT cod_cliente
+	FROM (SELECT cod_cliente FROM "SISTEMA-2".Clientes) AS cn
+
+
 ------------------------------------------------ Punto 1 -----------------------------------------------
 
------------------------------------------- Creación Sistema I ------------------------------------------
+------------------------------------------ Creación Sistema-1 ------------------------------------------
 
 CREATE SCHEMA "SISTEMA-1";
 
 -- Clientes (nro_Cliente, Nombre, tipo, dirección)
 CREATE TABLE "SISTEMA-1".CLIENTES(
-
 nro_cliente int NOT NULL, 
 nombre varchar(30) NULL,
 tipo varchar(30) NULL, 
@@ -17,17 +32,15 @@ CONSTRAINT PK_NRO_CLIENTE PRIMARY KEY (nro_cliente)
 
 -- Producto (nro_Producto, Nombre, nro_categ, precio_actual)
 CREATE TABLE "SISTEMA-1".PRODUCTO(
-
 nro_producto int NOT NULL, 
 nombre varchar(30) NULL,
 nro_categ int NOT NULL,
-precio_actual real NULL, 
+precio_actual float NULL, 
 CONSTRAINT PK_NRO_PRODUCTO PRIMARY KEY (nro_producto)
 );
 
 -- Categoria (nro_categ, descripción)
 CREATE TABLE "SISTEMA-1".CATEGORIA(
-
 nro_categ int NOT NULL, 
 descripcion varchar(30) NULL, 
 CONSTRAINT PK_NRO_CATEGORIA PRIMARY KEY (nro_categ)
@@ -35,23 +48,21 @@ CONSTRAINT PK_NRO_CATEGORIA PRIMARY KEY (nro_categ)
 
 -- Venta (Fecha_Vta, nro_Factura, nro_Cliente, Nombre, forma_pago)
 CREATE TABLE "SISTEMA-1".VENTA(
-
 fecha_vta timestamp DEFAULT current_timestamp, 
 nro_factura int NOT NULL,
 nro_cliente int NOT NULL,
 nombre varchar(30) NULL, 
-forma_pago varchar(30) NULL,
+forma_pago char(30) NULL,
 CONSTRAINT PK_NRO_FACTURA PRIMARY KEY (nro_factura)
 );
 
 -- Detalle_Venta(nro_factura, nro_producto, descripción, unidad, precio)
 CREATE TABLE "SISTEMA-1".DETALLE_VENTA(
-
 nro_factura int NOT NULL,
 nro_producto int NOT NULL,
 descripción varchar(30) NULL, 
-unidad real NULL,
-precio real NULL
+unidad int NULL,
+precio int NULL
 );
 
 ALTER TABLE "SISTEMA-1".PRODUCTO
@@ -75,7 +86,7 @@ REFERENCES "SISTEMA-1".PRODUCTO (nro_producto)
 on delete restrict on update restrict;
 
 
------------------------------------------- Creación Sistema II ------------------------------------------
+------------------------------------------ Creación Sistema-2 ------------------------------------------
 
 
 CREATE SCHEMA "SISTEMA-2";
@@ -177,11 +188,10 @@ on delete restrict on update restrict;
 
 ------------------------------------------------ Punto 2 ------------------------------------------------
 
------------------------------------------ Inserciones Sistema I -----------------------------------------
+----------------------------------------- Inserciones Sistema-1 -----------------------------------------
 
-CREATE OR REPLACE FUNCTION "llenarSistemaI"() RETURNS VOID AS $$
+CREATE OR REPLACE FUNCTION "SISTEMA-1"."llenarSistema-1"(cantidad int) RETURNS VOID AS $$
 DECLARE
-	"cantidadClientes" integer := 1000;
 	"baseCantidadClientes" integer;
 	"limiteCantidadClientes" integer;
 	"nombreC" varchar(30);
@@ -189,18 +199,14 @@ DECLARE
 	"tipoC" varchar(30);
 	"calleC" varchar(30);
 	"numMaxC" integer := 10000;
-	"numMinC" integer := 1;
 	"numeroC" integer;
-	"cantidadProductos" integer := 1000;
 	"baseCantidadProductos" integer;
 	"limiteCantidadProductos" integer;
 	"nroCategoriaP" integer;
-	"cantidadVentas" integer := 1000;
 	"baseCantidadVentas" integer;
 	"limiteCantidadVentas" integer;
 	"forma_pagoV" varchar(30);
 	"diaMaxV" integer := 365;
-	"diaMinV" integer := 1;
 	"diasV" integer;
 	"nroClienteV" int;
 	"nombreClienteV" varchar(30);
@@ -208,94 +214,78 @@ DECLARE
 	"nombreProductoDV" varchar(30);
 	"cantidadDetalleVentas" integer;
 	"cantMaxDV" integer := 15;
-	"cantMinDV" integer := 1;
 	"unidadDV" integer;
 	"unidadMaxDV" integer := 100;
-	"unidadMinDV" integer := 1;
 	"precioDV" integer;
 	"precioMaxDV" integer := 1500;
 	"precioMinDV" integer := 500;
-	"cantidadCategorias" INTEGER;
+	"cantidadCategorias" integer;
+	minimo integer := 1;
 	categorias varchar(30)[];		
 
 BEGIN		
 	-- carga clientes
 	SELECT MAX(nro_cliente) FROM "SISTEMA-1".clientes INTO "baseCantidadClientes";
-
 	IF "baseCantidadClientes" IS NULL THEN
 		"baseCantidadClientes" := 0;
 	END IF;
-	"baseCantidadClientes" := "baseCantidadClientes" + 1;
-	"limiteCantidadClientes":= "baseCantidadClientes" + "cantidadClientes" - 1;
+	"baseCantidadClientes" := "baseCantidadClientes" + minimo;
+	"limiteCantidadClientes":= "baseCantidadClientes" + cantidad - minimo;
 	FOR r IN "baseCantidadClientes" .. "limiteCantidadClientes" LOOP
 		SELECT d.n FROM (SELECT n FROM unnest(ARRAY['Alicia','Marcela','Lidia','Estela','Nora','Norma','Ines','Noemi','Iris','Susana', 'Silvia', 'Carolina', 'Fatima']) AS n) AS d ORDER BY random() LIMIT 1 INTO "nombreC";
 		SELECT d.n FROM (SELECT n FROM unnest(ARRAY['Gonzalez','Rodriguez','Gomez','Fernandez','Lopez','Diaz','Martinez','Perez','Romero','Sanchez', 'Garcia', 'Sosa', 'Torres']) AS n) AS d ORDER BY random() LIMIT 1 INTO "apellidoC";
 		SELECT d.n FROM (SELECT n FROM unnest(ARRAY['publico objetivo','cliente potencial','cliente eventual','interno','externo']) AS n) AS d ORDER BY random() LIMIT 1 INTO "tipoC";
 		SELECT d.n FROM (SELECT n FROM unnest(ARRAY['San Martin','Av. Colon','9 de Julio','Cacique Venancio','Castelar', 'Saavedra', 'Alsina', 'Vieytes', 'Brown', 'Sarmiento', 'Chiclana', 'Dorrego','Guemes', 'Berutti','Caronti', 'Casanova', 'Patricios', 'Donado', 'Fitz Roy', 'Av. Alem']) AS n) AS d ORDER BY random() LIMIT 1 INTO "calleC";
-		"numeroC" := trunc(random() * "numMaxC" + "numMinC");
+		"numeroC" := trunc(random() * "numMaxC" + minimo);
 		INSERT INTO "SISTEMA-1".clientes(nro_cliente, nombre, tipo, "dirección") VALUES (r, "apellidoC" || ', ' || "nombreC", "tipoC", "calleC" || ' ' || "numeroC");
-	
 	END LOOP;
 	-- carga categorias
 	categorias := ARRAY['almacen','panaderia','lacteos','carne vacuna','menudencias', 'carne porcina', 'granja', 'pescado', 'frutas', 'hortalizas', 'frutas secas']; 
 	SELECT count(nro_categ) FROM "SISTEMA-1".categoria INTO "cantidadCategorias";
-
 	IF "cantidadCategorias" <> 11 THEN
-		FOR r IN 1 .. 11 LOOP
+		FOR r IN minimo .. 11 LOOP
 			INSERT INTO "SISTEMA-1".categoria(nro_categ, descripcion) VALUES (r, categorias[r]);
-		
 		END LOOP;		
 	END IF;
 	-- carga productos
 	SELECT MAX(nro_producto) FROM "SISTEMA-1".producto INTO "baseCantidadProductos";
-
 	IF "baseCantidadProductos" IS NULL THEN
 		"baseCantidadProductos" := 0;
 	END IF;
-	"baseCantidadProductos" := "baseCantidadProductos" + 1;
-	"limiteCantidadProductos" := "baseCantidadProductos" + "cantidadProductos" - 1;
+	"baseCantidadProductos" := "baseCantidadProductos" + minimo;
+	"limiteCantidadProductos" := "baseCantidadProductos" + cantidad - minimo;
 	FOR r IN "baseCantidadProductos" .. "limiteCantidadProductos" LOOP
 		"precioDV" := trunc(random() * "precioMaxDV" + "precioMinDV");
-		SELECT nro_categ FROM "SISTEMA-1".categoria ORDER BY random() LIMIT 1 INTO "nroCategoriaP";
-	
+		SELECT nro_categ FROM "SISTEMA-1".categoria ORDER BY random() LIMIT minimo INTO "nroCategoriaP";
 		INSERT INTO "SISTEMA-1".producto(nro_producto, nombre, nro_categ, precio_actual) VALUES (r, 'Producto ' || r, "nroCategoriaP", "precioDV");
-	
 	END LOOP;
 	-- carga ventas
 	SELECT MAX(nro_factura) FROM "SISTEMA-1".venta INTO "baseCantidadVentas";
-
 	IF "baseCantidadVentas" IS NULL THEN
 		"baseCantidadVentas" := 0;
 	END IF;
-	"baseCantidadVentas" := "baseCantidadVentas" + 1;
-	"limiteCantidadVentas" := "baseCantidadVentas" + "cantidadVentas" - 1;
+	"baseCantidadVentas" := "baseCantidadVentas" + minimo;
+	"limiteCantidadVentas" := "baseCantidadVentas" + cantidad - minimo;
 	FOR r IN "baseCantidadVentas" .. "limiteCantidadVentas" LOOP
 		SELECT d.n FROM (SELECT n FROM unnest(ARRAY['contado','tarjeta debito','tarjeta credito','transferencia bancaria']) AS n) AS d ORDER BY random() LIMIT 1 INTO "forma_pagoV";
-		"diasV" := trunc(random() * "diaMaxV" + "diaMinV");
-		SELECT nro_cliente FROM "SISTEMA-1".clientes ORDER BY random() LIMIT 1 INTO "nroClienteV";
-	
+		"diasV" := trunc(random() * "diaMaxV" + minimo);
+		SELECT nro_cliente FROM "SISTEMA-1".clientes ORDER BY random() LIMIT minimo INTO "nroClienteV";
 		SELECT nombre FROM "SISTEMA-1".clientes WHERE nro_cliente = "nroClienteV" INTO "nombreClienteV";
-	
 		INSERT INTO "SISTEMA-1".venta(fecha_vta, nro_factura, nro_cliente, nombre, forma_pago) VALUES (current_date + CAST("diasV"||' days' AS INTERVAL), r, "nroClienteV", "nombreClienteV", "forma_pagoV");
-	
 		-- carga detalles venta
-		"cantidadDetalleVentas" := trunc(random() * "cantMaxDV" + "cantMinDV");
-		FOR t IN 1 .. "cantidadDetalleVentas" LOOP
-			SELECT nro_producto FROM "SISTEMA-1".producto ORDER BY random() LIMIT 1 INTO "nroProductoDV";
-		
+		"cantidadDetalleVentas" := trunc(random() * "cantMaxDV" + minimo);
+		FOR t IN minimo .. "cantidadDetalleVentas" LOOP
+			SELECT nro_producto FROM "SISTEMA-1".producto ORDER BY random() LIMIT minimo INTO "nroProductoDV";
 			SELECT nombre FROM "SISTEMA-1".producto  WHERE nro_producto = "nroProductoDV" INTO "nombreProductoDV";
-		
-			"unidadDV" := trunc(random() * "unidadMaxDV" + "unidadMinDV");
+			"unidadDV" := trunc(random() * "unidadMaxDV" + minimo);
 			SELECT precio_actual FROM "SISTEMA-1".producto  WHERE nro_producto = "nroProductoDV" INTO "precioDV";
-		
 			INSERT INTO "SISTEMA-1".detalle_venta(nro_factura, nro_producto, "descripción", unidad, precio) VALUES (r, "nroProductoDV",'Descripcion ' || "nombreProductoDV", "unidadDV", "precioDV");
-		
 		END LOOP;
 	END LOOP;
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT "llenarSistemaI"();
+SELECT "SISTEMA-1"."llenarSistema-1"(1000);
 
 
 ------------------------------------------- funcion hex_to_int -------------------------------------------
@@ -312,12 +302,11 @@ $$
 LANGUAGE 'plpgsql' IMMUTABLE STRICT; 
 
 
------------------------------------------ Inserciones Sistema II -----------------------------------------
+----------------------------------------- Inserciones Sistema-2 -----------------------------------------
 
 
-CREATE OR REPLACE FUNCTION "llenarSistemaII"() RETURNS VOID AS $$
+CREATE OR REPLACE FUNCTION "SISTEMA-2"."llenarSistema-2"(cantidad int) RETURNS VOID AS $$
 DECLARE
-	"cantidadClientes" integer := 1000;
 	"baseCantidadClientes" integer;
 	"limiteCantidadClientes" integer;
 	"nombreC" varchar(30);
@@ -325,19 +314,15 @@ DECLARE
 	"tipoClienteTC" varchar(30);
 	"calleC" varchar(30);
 	"numMaxC" integer := 10000;
-	"numMinC" integer := 1;
 	"numeroC" integer;
 	"descripcionCat" varchar(30);
-	"cantidadProductos" integer := 1000;
 	"baseCantidadProductos" integer;
 	"limiteCantidadProductos" integer;
 	"nroCategoriaP" text;
-	"cantidadVentas" integer := 1000;
 	"baseCantidadVentas" integer;
 	"limiteCantidadVentas" integer;
 	"forma_pagoMP" varchar(30);
-	"diaMaxV" integer := 15;
-	"diaMinV" integer := 1;
+	"diaMaxV" integer := 365;
 	"diasV" integer;
 	"nroClienteV" text;
 	"nombreClienteV" varchar(30);
@@ -345,10 +330,8 @@ DECLARE
 	"nombreProductoDV" varchar(30);
 	"cantidadDetalleVentas" integer;
 	"cantMaxDV" integer := 15;
-	"cantMinDV" integer := 1;
 	"unidadDV" integer;
 	"unidadMaxDV" integer := 100;
-	"unidadMinDV" integer := 1;
 	"precioDV" integer;
 	"precioMaxDV" integer := 1500;
 	"precioMinDV" integer := 100;
@@ -359,8 +342,8 @@ DECLARE
 	"cantidadMediosPago" integer;
 	"cantSubcategoria" integer;
 	"subCategoriaMax" integer := 15;
-	"subCategoriaMin"integer := 1;
 	"nroSubCategoriaP" integer;
+	minimo integer := 1;
 	tipoclientes varchar(30)[];
 	categorias varchar(30)[];
 	mediospago varchar(30)[];
@@ -368,84 +351,84 @@ DECLARE
 BEGIN
 	-- carga tipo clientes
 	tipoclientes := ARRAY['publico objetivo','cliente potencial','cliente eventual','interno','externo'];
-	SELECT count(cod_tipo) FROM tipo_cliente INTO "cantidadTipoClientes";
+	SELECT count(cod_tipo) FROM "SISTEMA-2".tipo_cliente INTO "cantidadTipoClientes";
 	IF "cantidadTipoClientes" <> 5 THEN
-		FOR r IN 1 .. 5 LOOP
-			INSERT INTO tipo_cliente(cod_tipo, descripcion)VALUES (r, tipoclientes[r]);
+		FOR r IN minimo .. 5 LOOP
+			INSERT INTO "SISTEMA-2".tipo_cliente(cod_tipo, descripcion)VALUES (r, tipoclientes[r]);
 		END LOOP;
 	END IF;
 	-- carga clientes	
-	SELECT MAX(hex_to_int(cod_cliente)) FROM clientes INTO "baseCantidadClientes";
+	SELECT MAX(hex_to_int(cod_cliente)) FROM "SISTEMA-2".clientes INTO "baseCantidadClientes";
 	IF "baseCantidadClientes" IS NULL THEN
 		"baseCantidadClientes" := 0;
 	END IF;
-	"baseCantidadClientes" := "baseCantidadClientes" + 1;
-	"limiteCantidadClientes":= "baseCantidadClientes" + "cantidadClientes" - 1;
+	"baseCantidadClientes" := "baseCantidadClientes" + minimo;
+	"limiteCantidadClientes":= "baseCantidadClientes" + cantidad - minimo;
 	FOR r IN "baseCantidadClientes" .. "limiteCantidadClientes" LOOP
 		SELECT d.n FROM (SELECT n FROM unnest(ARRAY['Alicia','Marcela','Lidia','Estela','Nora','Norma','Ines','Noemi','Iris','Susana', 'Silvia', 'Carolina', 'Fatima']) AS n) AS d ORDER BY random() LIMIT 1 INTO "nombreC";	
 		SELECT d.n FROM (SELECT n FROM unnest(ARRAY['Gonzalez','Rodriguez','Gomez','Fernandez','Lopez','Diaz','Martinez','Perez','Romero','Sanchez', 'Garcia', 'Sosa', 'Torres']) AS n) AS d ORDER BY random() LIMIT 1 INTO "apellidoC";
 		SELECT d.n FROM (SELECT n FROM unnest(ARRAY['San Martin','Av. Colon','9 de Julio','Cacique Venancio','Castelar', 'Saavedra', 'Alsina', 'Vieytes', 'Brown', 'Sarmiento', 'Chiclana', 'Dorrego','Guemes', 'Berutti','Caronti', 'Casanova', 'Patricios', 'Donado', 'Fitz Roy', 'Av. Alem']) AS n) AS d ORDER BY random() LIMIT 1 INTO "calleC";
-		SELECT cod_tipo FROM tipo_cliente ORDER BY random() LIMIT 1 INTO "codTipoC";
-		"numeroC" := trunc(random() * "numMaxC" + "numMinC");
-		INSERT INTO clientes(cod_cliente, nombre, cod_tipo, "dirección") VALUES (to_hex(r + hex_to_int('aaa')), "apellidoC" || ', ' || "nombreC", "codTipoC", "calleC" || ' ' || "numeroC");
+		SELECT cod_tipo FROM "SISTEMA-2".tipo_cliente ORDER BY random() LIMIT minimo INTO "codTipoC";
+		"numeroC" := trunc(random() * "numMaxC" + minimo);
+		INSERT INTO "SISTEMA-2".clientes(cod_cliente, nombre, cod_tipo, "dirección") VALUES (to_hex(r + hex_to_int('aaa')), "apellidoC" || ', ' || "nombreC", "codTipoC", "calleC" || ' ' || "numeroC");
 	END LOOP;
 	-- carga categorias
 	categorias := ARRAY['almacen','panaderia','lacteos','carne vacuna','menudencias', 'carne porcina', 'granja', 'pescado', 'frutas', 'hortalizas', 'frutas secas']; 
-	SELECT count(cod_categoria) FROM categoria INTO "cantidadCategorias";
+	SELECT count(cod_categoria) FROM "SISTEMA-2".categoria INTO "cantidadCategorias";
 	IF "cantidadCategorias" < 11 THEN
-		FOR r IN 1 .. 11 LOOP
-			"cantSubcategoria" := trunc(random() * "subCategoriaMax" + "subCategoriaMin");
-			FOR t IN 1 .. "cantSubcategoria" LOOP
-				INSERT INTO categoria(cod_categoria, cod_subcategoria, descripcion) VALUES (to_hex(r + hex_to_int('aaa')), t ,categorias[r] || ' ' || to_hex(r + hex_to_int('aaa')) || '-' || t);
+		FOR r IN minimo .. 11 LOOP
+			"cantSubcategoria" := trunc(random() * "subCategoriaMax" + minimo);
+			FOR t IN minimo .. "cantSubcategoria" LOOP
+				INSERT INTO "SISTEMA-2".categoria(cod_categoria, cod_subcategoria, descripcion) VALUES (to_hex(r + hex_to_int('aaa')), t ,categorias[r] || ' ' || to_hex(r + hex_to_int('aaa')) || '-' || t);
 			END LOOP;
 		END LOOP;
 	END IF;
 	-- carga productos
-	SELECT MAX(hex_to_int(cod_producto)) FROM producto INTO "baseCantidadProductos";
+	SELECT MAX(hex_to_int(cod_producto)) FROM "SISTEMA-2".producto INTO "baseCantidadProductos";
 	IF "baseCantidadProductos" IS NULL THEN
 		"baseCantidadProductos" := 0;
 	END IF;
-	"baseCantidadProductos" := "baseCantidadProductos" + 1;
-	"limiteCantidadProductos" := "baseCantidadProductos" + "cantidadProductos" - 1;
+	"baseCantidadProductos" := "baseCantidadProductos" + minimo;
+	"limiteCantidadProductos" := "baseCantidadProductos" + cantidad - minimo;
 	FOR r IN "baseCantidadProductos" .. "limiteCantidadProductos" LOOP
 		"precioDV" := trunc(random() * "precioMaxDV" + "precioMinDV");
-		SELECT cod_categoria FROM categoria ORDER BY random() LIMIT 1 INTO "nroCategoriaP";
-		SELECT cod_subcategoria FROM categoria WHERE cod_categoria = "nroCategoriaP" ORDER BY random() LIMIT 1 INTO "nroSubCategoriaP";
-		INSERT INTO producto(cod_producto, nombre, cod_categoria, cod_subcategoria, precio_actual) VALUES (to_hex(r + hex_to_int('aaa')), 'Producto ' || r, "nroCategoriaP", "nroSubCategoriaP", "precioDV");
+		SELECT cod_categoria FROM "SISTEMA-2".categoria ORDER BY random() LIMIT minimo INTO "nroCategoriaP";
+		SELECT cod_subcategoria FROM "SISTEMA-2".categoria WHERE cod_categoria = "nroCategoriaP" ORDER BY random() LIMIT minimo INTO "nroSubCategoriaP";
+		INSERT INTO "SISTEMA-2".producto(cod_producto, nombre, cod_categoria, cod_subcategoria, precio_actual) VALUES (to_hex(r + hex_to_int('aaa')), 'Producto ' || r, "nroCategoriaP", "nroSubCategoriaP", "precioDV");
 	END LOOP;
 	-- carga medios de pago
 	mediospago := ARRAY['contado','tarjeta debito','tarjeta credito','transferencia bancaria'];
-	SELECT count(cod_medio_pago) FROM medio_pago INTO "cantidadMediosPago";
+	SELECT count(cod_medio_pago) FROM "SISTEMA-2".medio_pago INTO "cantidadMediosPago";
 	IF "cantidadMediosPago" <> 4 THEN
-		FOR r IN 1.. 4 LOOP
+		FOR r IN minimo .. 4 LOOP
 -- que va en valor unidad tipoOperacion ??
-			INSERT INTO medio_pago(cod_medio_pago, "descripción", valor, unidad, tipo_operacion) VALUES (r, mediospago[r], 1, 1, r);
+			INSERT INTO "SISTEMA-2".medio_pago(cod_medio_pago, "descripción", valor, unidad, tipo_operacion) VALUES (r, mediospago[r], 1, 1, r);
 		END LOOP;
 	END IF;
 	-- carga ventas
-	SELECT MAX(id_factura) FROM venta INTO "baseCantidadVentas";
+	SELECT MAX(id_factura) FROM "SISTEMA-2".venta INTO "baseCantidadVentas";
 	IF "baseCantidadVentas" IS NULL THEN
 		"baseCantidadVentas" := 0;
 	END IF;
-	"baseCantidadVentas" := "baseCantidadVentas" + 1;
-	"limiteCantidadVentas" := "baseCantidadVentas" + "cantidadVentas" - 1;
+	"baseCantidadVentas" := "baseCantidadVentas" + minimo;
+	"limiteCantidadVentas" := "baseCantidadVentas" + cantidad - minimo;
 	FOR r IN "baseCantidadVentas" .. "limiteCantidadVentas" LOOP
-		SELECT cod_medio_pago FROM medio_pago ORDER BY random() LIMIT 1 INTO "codMedioPagoV";
-		"diasV" := trunc(random() * "diaMaxV" + "diaMinV");
-		SELECT cod_cliente FROM clientes ORDER BY random() LIMIT 1 INTO "nroClienteV";
-		SELECT nombre FROM clientes WHERE cod_cliente = "nroClienteV" INTO "nombreClienteV";
-		INSERT INTO venta(fecha_vta, id_factura, cod_cliente, nombre, cod_medio_pago) VALUES (current_date + CAST("diasV"||' days' AS INTERVAL), r, "nroClienteV", "nombreClienteV", "codMedioPagoV");
+		SELECT cod_medio_pago FROM "SISTEMA-2".medio_pago ORDER BY random() LIMIT minimo INTO "codMedioPagoV";
+		"diasV" := trunc(random() * "diaMaxV" + minimo);
+		SELECT cod_cliente FROM "SISTEMA-2".clientes ORDER BY random() LIMIT minimo INTO "nroClienteV";
+		SELECT nombre FROM "SISTEMA-2".clientes WHERE cod_cliente = "nroClienteV" INTO "nombreClienteV";
+		INSERT INTO "SISTEMA-2".venta(fecha_vta, id_factura, cod_cliente, nombre, cod_medio_pago) VALUES (current_date + CAST("diasV"||' days' AS INTERVAL), r, "nroClienteV", "nombreClienteV", "codMedioPagoV");
 		-- carga detalles venta
-		"cantidadDetalleVentas" := trunc(random() * "cantMaxDV" + "cantMinDV");
-		FOR t IN 1 .. "cantidadDetalleVentas" LOOP
-			SELECT cod_producto FROM producto ORDER BY random() LIMIT 1 INTO "nroProductoDV";
-			SELECT nombre FROM producto WHERE cod_producto = "nroProductoDV" INTO "nombreProductoDV";
-			"unidadDV" := trunc(random() * "unidadMaxDV" + "unidadMinDV");
-			SELECT precio_actual FROM producto  WHERE cod_producto = "nroProductoDV" INTO "precioDV";
-			INSERT INTO detalle_venta(id_factura, cod_producto, "descripción", unidad, precio) VALUES (r, "nroProductoDV", 'Descripcion ' || "nombreProductoDV", "unidadDV", "precioDV");
+		"cantidadDetalleVentas" := trunc(random() * "cantMaxDV" + minimo);
+		FOR t IN minimo .. "cantidadDetalleVentas" LOOP
+			SELECT cod_producto FROM "SISTEMA-2".producto ORDER BY random() LIMIT minimo INTO "nroProductoDV";
+			SELECT nombre FROM "SISTEMA-2".producto WHERE cod_producto = "nroProductoDV" INTO "nombreProductoDV";
+			"unidadDV" := trunc(random() * "unidadMaxDV" + minimo);
+			SELECT precio_actual FROM "SISTEMA-2".producto  WHERE cod_producto = "nroProductoDV" INTO "precioDV";
+			INSERT INTO "SISTEMA-2".detalle_venta(id_factura, cod_producto, "descripción", unidad, precio) VALUES (r, "nroProductoDV", 'Descripcion ' || "nombreProductoDV", "unidadDV", "precioDV");
 		END LOOP;
 	END LOOP;
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT "llenarSistemaII"();
+SELECT "SISTEMA-2"."llenarSistema-2"(1000);
