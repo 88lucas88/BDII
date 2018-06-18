@@ -213,7 +213,7 @@ CREATE TABLE tmpVentas (
 	Id_Cliente text,--modificado
 	Id_Producto text,--modificado
 	Id_Sucursal int,
-	forma_pago text, --modificado
+	Id_medio_pago int, --modificado
 	monto_vendido real,
 	cantidad_vendida real,
 	nombre_producto varchar(30),
@@ -262,14 +262,14 @@ $$
 DECLARE
 -- falta el idtiempo
 BEGIN
-	INSERT INTO public.tmpventas(fecha_vta, id_factura, id_cliente, id_producto, id_sucursal, forma_pago, monto_vendido, cantidad_vendida, 
+	INSERT INTO public.tmpventas(fecha_vta, id_factura, id_cliente, id_producto, id_sucursal, Id_medio_pago, monto_vendido, cantidad_vendida, 
 		nombre_producto, categ_prod, subcat_prod, precio, nombre_cliente, tipo_cliente)
 	SELECT * FROM dblink ('conect_suc1', 'SELECT fecha_vta, v.id_factura, c.cod_cliente, p.cod_producto, ' || CAST(pSuc AS text) || 'as Id_Sucursal, 
-		CAST(v.cod_medio_pago as Text), unidad * precio as monto_vendido, unidad as cantidad_vendida,p.nombre, p.cod_categoria, p.cod_subcategoria, precio, c.nombre, c.cod_tipo 
+		v.cod_medio_pago, unidad * precio as monto_vendido, unidad as cantidad_vendida,p.nombre, p.cod_categoria, p.cod_subcategoria, precio, c.nombre, c.cod_tipo 
 		FROM "SISTEMA-2".venta v, "SISTEMA-2".detalle_venta dv, "SISTEMA-2".clientes c, "SISTEMA-2".producto p
 		WHERE v.id_factura = dv.id_factura and v.cod_cliente = c.cod_cliente and dv.cod_producto = p.cod_producto and  
 		date_part (''month'', fecha_vta) =  ' || CAST(pMes AS text) || 'and date_part (''year'', fecha_vta) = ' || CAST(pAño AS text))
-		AS tmpvent (fecha_vta timestamp, Id_Factura int, Id_Cliente text, Id_Producto text, Id_Sucursal int, forma_pago text, monto_vendido real, 
+		AS tmpvent (fecha_vta timestamp, Id_Factura int, Id_Cliente text, Id_Producto text, Id_Sucursal int, Id_medio_pago int, monto_vendido real, 
 		cantidad_vendida real, nombre_producto varchar(30), categ_prod text, subcat_prod int, precio real, nombre_cliente varchar(30), tipo_cliente int);
 END;
 $$ LANGUAGE plpgsql;
@@ -282,35 +282,6 @@ SELECT CargaTmpVentasSN (2,9,2018);
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
-UPDATE tmpventas
-    SET forma_pago = 
-	    CASE forma_pago
-		WHEN 'contado' THEN CAST(1 AS text)
-		WHEN 'debito' THEN CAST(2 AS text)
-		WHEN 'credito' THEN CAST(3 AS text)
-		WHEN 'transferencia' THEN CAST(4 AS text)
-		WHEN '1' THEN CAST(1 AS text)
-		WHEN '2' THEN CAST(2 AS text)
-		WHEN '3' THEN CAST(3 AS text)
-		WHEN '4' THEN CAST(4 AS text)
-	    END
--- WHERE forma_pago IN ('contado', 'contado', 'targeta credito', 'transferencia bancaria');
-
-
-UPDATE tmpventas 
-SET forma_pago = 
-	CASE forma_pago
-		WHEN '1' THEN CAST(111 AS text)
-		WHEN '2' THEN CAST(222 AS text)
-		WHEN '3' THEN CAST(333 AS text)
-		WHEN '4' THEN CAST(444 AS text)
-	END
-
-
-
-
 
 CREATE TABLE "SISTEMA-1".TECliente (
 	cdw serial,
