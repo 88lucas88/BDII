@@ -1,21 +1,4 @@
-﻿
-CREATE TABLE "SISTEMA-1".TECliente (
-	cdw serial,
-	cvs integer DEFAULT NULL,
-	cns text DEFAULT NULL,
-	CONSTRAINT pk_tecliente PRIMARY KEY (cdw)
-);
-
-INSERT INTO "SISTEMA-1".TECliente (cvs)
-	SELECT nro_cliente
-	FROM (SELECT nro_cliente FROM "SISTEMA-1".Clientes) AS cv
-
-INSERT INTO "SISTEMA-1".TECliente (cns)
-	SELECT cod_cliente
-	FROM (SELECT cod_cliente FROM "SISTEMA-2".Clientes) AS cn
-
-
------------------------------------------------- Punto 1 -----------------------------------------------
+﻿------------------------------------------------ Punto 1 -----------------------------------------------
 
 ------------------------------------------ Creación Sistema-1 ------------------------------------------
 
@@ -267,7 +250,7 @@ BEGIN
 	"baseCantidadVentas" := "baseCantidadVentas" + minimo;
 	"limiteCantidadVentas" := "baseCantidadVentas" + cantidad - minimo;
 	FOR r IN "baseCantidadVentas" .. "limiteCantidadVentas" LOOP
-		SELECT d.n FROM (SELECT n FROM unnest(ARRAY['contado','tarjeta debito','tarjeta credito','transferencia bancaria']) AS n) AS d ORDER BY random() LIMIT 1 INTO "forma_pagoV";
+		SELECT d.n FROM (SELECT n FROM unnest(ARRAY['contado','debito','credito','transferencia']) AS n) AS d ORDER BY random() LIMIT 1 INTO "forma_pagoV";
 		"diasV" := trunc(random() * "diaMaxV" + minimo);
 		SELECT nro_cliente FROM "SISTEMA-1".clientes ORDER BY random() LIMIT minimo INTO "nroClienteV";
 		SELECT nombre FROM "SISTEMA-1".clientes WHERE nro_cliente = "nroClienteV" INTO "nombreClienteV";
@@ -397,7 +380,7 @@ BEGIN
 		INSERT INTO "SISTEMA-2".producto(cod_producto, nombre, cod_categoria, cod_subcategoria, precio_actual) VALUES (to_hex(r + hex_to_int('aaa')), 'Producto ' || r, "nroCategoriaP", "nroSubCategoriaP", "precioDV");
 	END LOOP;
 	-- carga medios de pago
-	mediospago := ARRAY['contado','tarjeta debito','tarjeta credito','transferencia bancaria'];
+	mediospago := ARRAY['contado','debito','credito','transferencia'];
 	SELECT count(cod_medio_pago) FROM "SISTEMA-2".medio_pago INTO "cantidadMediosPago";
 	IF "cantidadMediosPago" <> 4 THEN
 		FOR r IN minimo .. 4 LOOP
