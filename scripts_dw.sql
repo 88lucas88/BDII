@@ -14,8 +14,8 @@ CREATE TABLE TEProductos (
 	CONSTRAINT pk_teproductos PRIMARY KEY (pdw)
 );
 
-SELECT dblink_connect('conect_suc1', 'port=5434 dbname=PatSur-Suc1 user=postgres password=david'); -- le deje solo el puerto y la contraseña del servidor
-SELECT dblink_connect('conect_suc1', 'hostaddr=192.168.1.112 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres');
+SELECT dblink_connect('conect_suc1', 'port=5434 dbname=PatSur-Suc1 user=postgres password=david'); -- david
+SELECT dblink_connect('conect_suc1', 'hostaddr=192.168.1.112 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres'); --lucas
 
 SELECT dblink_disconnect('conect_suc1');
 
@@ -218,10 +218,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-select InsertarTiempo(2,2030);
-
-
 CREATE TABLE tmpVentas (
+	Id_Fecha int,
 	fecha_vta timestamp,
 	Id_Factura int,
 	Id_Cliente int,				--CLIENTE
@@ -286,7 +284,7 @@ $$
 DECLARE
 -- falta el idtiempo
 BEGIN
-	INSERT INTO public.tmpventas(fecha_vta, id_factura, id_cliente, id_producto, id_sucursal, Id_medio_pago, monto_vendido, cantidad_vendida, 
+	INSERT INTO tmpventas(fecha_vta, id_factura, id_cliente, id_producto, id_sucursal, Id_medio_pago, monto_vendido, cantidad_vendida, 
 		nombre_producto, categ_prod, subcat_prod, precio, nombre_cliente, tipo_cliente)
 	SELECT * FROM dblink ('conect_suc1', 'SELECT fecha_vta, v.id_factura, c.cod_cliente, p.cod_producto, ' || CAST(pSuc AS text) || 'as Id_Sucursal, 
 		v.cod_medio_pago, unidad * precio as monto_vendido, unidad as cantidad_vendida,p.nombre, p.cod_categoria, p.cod_subcategoria, precio, c.nombre, c.cod_tipo 
@@ -295,11 +293,13 @@ BEGIN
 		date_part (''month'', fecha_vta) =  ' || CAST(pMes AS text) || 'and date_part (''year'', fecha_vta) = ' || CAST(pAño AS text))
 		AS tmpvent (fecha_vta timestamp, Id_Factura int, Id_Cliente text, Id_Producto text, Id_Sucursal int, Id_medio_pago int, monto_vendido real, 
 		cantidad_vendida real, nombre_producto varchar(30), categ_prod text, subcat_prod int, precio real, nombre_cliente varchar(30), tipo_cliente int);
+	UPDATE tmpventas SET Id_Tiempo = InsertarTiempo(pMes, pAño) WHERE Id_Tiempo IS NULL;
+	
 END;
 $$ LANGUAGE plpgsql;
 
 
-SELECT CargaTmpVentasSN (2,9,2018);
+SELECT CargaTmpVentasSN (2,6,2019);
 
 
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
