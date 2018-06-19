@@ -316,7 +316,7 @@ SELECT CargaTmpVentas (1,12,2018);
 CREATE OR REPLACE FUNCTION CargaTmpVentasSN(pSuc integer, pMes integer, pAño integer) RETURNS VOID AS
 $$
 DECLARE
--- falta el idtiempo
+
 BEGIN	
 
 	INSERT INTO tmpventas(fecha_vta, Id_Factura, Id_Cliente, Id_producto, Id_Sucursal, Id_medio_pago, monto_vendido, cantidad_vendida, 
@@ -331,7 +331,7 @@ BEGIN
 		cantidad_vendida real, nombre_producto varchar(30), Id_categoria text, Id_subcategoria text, nombre_cliente varchar(30), tipo_cliente int);
 	
 
-UPDATE tmpventas SET Id_Tiempo = InsertarTiempo(pMes, pAño) WHERE Id_Tiempo IS NULL;
+	UPDATE tmpventas SET Id_Tiempo = InsertarTiempo(pMes, pAño) WHERE Id_Tiempo IS NULL;
 	
 END;
 $$ LANGUAGE plpgsql;
@@ -345,3 +345,23 @@ SELECT CargaTmpVentasSN (2,6,2019);
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+CREATE OR REPLACE FUNCTION hex_to_int(hexval varchar) RETURNS integer AS $$
+DECLARE
+	result  int;
+BEGIN
+	EXECUTE 'SELECT x''' || hexval || '''::int' INTO result;
+	RETURN result;
+END;
+$$
+LANGUAGE 'plpgsql' IMMUTABLE STRICT; 
+
+--ingreso de clientes de los clientes del viejo sistema
+INSERT INTO Clientes
+	SELECT DISTINCT cdw, nombre_cliente, tipo_cliente
+	FROM tmpVentas tmpv, TECliente tec
+	WHERE hex_to_int(tmpv.id_cliente) = tec.cvs AND tec.cdw not in (SELECT id_cliente from Clientes)
+--ingreso de clientes de los clientes del nuevo sistema
+INSERT INTO Clientes
+	SELECT DISTINCT cdw, nombre_cliente, tipo_cliente
+	FROM tmpVentas tmpv, TECliente tec
+	WHERE tmpv.id_cliente = tec.cns AND tec.cdw not in (SELECT id_cliente from Clientes)
