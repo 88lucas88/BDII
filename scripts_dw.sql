@@ -220,7 +220,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TABLE tmpVentas (
-	Id_Fecha int,
+	Id_Tiempo int,
 	fecha_vta timestamp,
 	Id_Factura int,
 	Id_Cliente int,				--CLIENTE
@@ -271,26 +271,12 @@ BEGIN
 
 	AS TCI 
 	INNER JOIN categoria C ON (C.descripcion = TCI.descrip_categ)) AS TCII;
-	
+
+	UPDATE tmpventas SET Id_Tiempo = InsertarTiempo(pMes, pAño) WHERE Id_Tiempo IS NULL;
 END;
 $$ LANGUAGE plpgsql;
 
 SELECT CargaTmpVentas (1,12,2018);
-
-SELECT * FROM
-(SELECT * FROM (SELECT fecha_vta, v.nro_factura, c.nro_cliente, p.nro_producto, CASE v.forma_pago WHEN 'contado' THEN 1 WHEN 'debito' THEN 2 WHEN 'credito' THEN 3 WHEN 'transferencia' THEN 4 END AS Id_medio_pago, 
-unidad * precio as monto_vendido, unidad as cantidad_vendida, p.nombre, cat.descripcion as descrip_cat, c.nombre, c.tipo
-FROM "SISTEMA-1".venta v, "SISTEMA-1".detalle_venta dv, "SISTEMA-1".clientes c, "SISTEMA-1".producto p, "SISTEMA-1".categoria cat
-WHERE v.nro_Factura = dv.nro_Factura and v.nro_cliente = c.nro_cliente and dv.nro_producto = p.nro_producto and p.nro_categ = cat.nro_categ) AS I
-
-INNER JOIN "SISTEMA-2".tipo_cliente C ON (I.tipo = C.descripcion)) AS II
-
-INNER JOIN "SISTEMA-2".categoria cat ON (II.descrip_cat = cat.descripcion);
-
-
-
-
-
 
 --Script ETL - extraccion de datos de ventas desde el sistema de facturacion nuevo
 
