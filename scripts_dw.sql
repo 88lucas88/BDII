@@ -53,8 +53,8 @@ INSERT INTO MEDIO_PAGO (Id_MedioPago,descripción)
 
 -- Categoria (cod_categoria,  cod_subcategoría, descripción)
 CREATE TABLE CATEGORIA(
-	Id_Categoria int NOT NULL, 
-	Id_subcategoria int NOT NULL,
+	Id_Categoria text NOT NULL, 
+	Id_subcategoria text NOT NULL,
 	descripcion varchar(30) NULL, 
 	CONSTRAINT PK_ID_CATEGORIA PRIMARY KEY (Id_Categoria, Id_subcategoria)
 );
@@ -130,8 +130,8 @@ DROP TABLE TIEMPO;
 
 CREATE TABLE PRODUCTOS (
 	Id_Producto int NOT NULL,
-	Id_Categoria int NOT NULL,
-	Id_subcategoria int NOT NULL,
+	Id_Categoria text NOT NULL,
+	Id_subcategoria text NOT NULL,
 	nombre varchar(30) NOT NULL,
 	CONSTRAINT PK_PRODUCTOS PRIMARY KEY (Id_Producto)
 );
