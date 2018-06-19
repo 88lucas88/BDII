@@ -359,7 +359,7 @@ LANGUAGE 'plpgsql' IMMUTABLE STRICT;
 INSERT INTO Clientes
 	SELECT DISTINCT cdw, nombre_cliente, tipo_cliente
 	FROM tmpVentas tmpv, TECliente tec
-	WHERE hex_to_int(tmpv.id_cliente) = tec.cvs AND tec.cdw not in (SELECT id_cliente from Clientes)
+	WHERE tmpv.id_cliente = CAST (tec.cvs as text) AND tec.cdw not in (SELECT id_cliente from Clientes)
 --ingreso de clientes del nuevo sistema desde tmpVentas
 INSERT INTO Clientes
 	SELECT DISTINCT cdw, nombre_cliente, tipo_cliente
@@ -370,7 +370,7 @@ INSERT INTO Clientes
 INSERT INTO Productos
 	SELECT DISTINCT pdw, id_categoria, 'aab', nombre_producto
 	FROM tmpVentas tmpv, TEProductos tep
-	WHERE hex_to_int(tmpv.id_producto) = tep.pvs and tep.pdw not in (SELECT id_producto from Productos)
+	WHERE tmpv.id_producto = CAST (tep.pvs as text) and tep.pdw not in (SELECT id_producto from Productos)
 --ingreso de productos del nuevo sistema desde tmpVentas
 INSERT INTO Productos
 	SELECT DISTINCT pdw, id_categoria, id_subcategoria, nombre_producto
@@ -381,7 +381,7 @@ INSERT INTO Productos
 INSERT INTO Ventas
 SELECT id_tiempo, fecha_vta, id_factura, cdw, pdw, id_sucursal, id_medio_pago, monto_vendido, cantidad_vendida
 FROM tmpVentas tmpv, TECliente tec, TEProductos tep
-WHERE hex_to_int(tmpv.id_cliente) = tec.cvs AND hex_to_int(tmpv.id_producto) = tep.pvs
+WHERE tmpv.id_cliente = CAST (tec.cvs as text) AND tmpv.id_producto = CAST (tep.pvs as text)
 
 SELECT * FROM Ventas
 SELECT id_factura, count (id_factura) FROM tmpVentas
