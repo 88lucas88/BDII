@@ -1,4 +1,4 @@
-﻿------------------------------------------------ Punto 1 -----------------------------------------------
+------------------------------------------------ Punto 1 -----------------------------------------------
 
 ------------------------------------------ Creación Sistema-1 ------------------------------------------
 
@@ -96,7 +96,7 @@ CREATE TABLE "SISTEMA-2".PRODUCTO(
 cod_producto text NOT NULL, 
 nombre varchar(30) NULL,
 cod_categoria text NOT NULL,
-cod_subcategoria int NOT NULL,
+cod_subcategoria text NOT NULL,
 precio_actual float NULL, 
 CONSTRAINT PK_COD_PRODUCTO PRIMARY KEY (cod_producto)
 );
@@ -104,7 +104,7 @@ CONSTRAINT PK_COD_PRODUCTO PRIMARY KEY (cod_producto)
 -- Categoria (cod_categoria,  cod_subcategoría, descripción)
 CREATE TABLE "SISTEMA-2".CATEGORIA(
 cod_categoria text NOT NULL, 
-cod_subcategoria int NOT NULL,
+cod_subcategoria text NOT NULL,
 descripcion varchar(30) NULL, 
 CONSTRAINT PK_COD_CATEGORIA PRIMARY KEY (cod_categoria, cod_subcategoria)
 );
@@ -325,7 +325,7 @@ DECLARE
 	"cantidadMediosPago" integer;
 	"cantSubcategoria" integer;
 	"subCategoriaMax" integer := 15;
-	"nroSubCategoriaP" integer;
+	"nroSubCategoriaP" text;
 	minimo integer := 1;
 	tipoclientes varchar(30)[];
 	categorias varchar(30)[];
@@ -362,7 +362,7 @@ BEGIN
 		FOR r IN minimo .. 11 LOOP
 			"cantSubcategoria" := trunc(random() * "subCategoriaMax" + minimo);
 			FOR t IN minimo .. "cantSubcategoria" LOOP
-				INSERT INTO "SISTEMA-2".categoria(cod_categoria, cod_subcategoria, descripcion) VALUES (to_hex(r + hex_to_int('aaa')), t ,categorias[r] || ' ' || to_hex(r + hex_to_int('aaa')) || '-' || t);
+				INSERT INTO "SISTEMA-2".categoria(cod_categoria, cod_subcategoria, descripcion) VALUES (to_hex(r + hex_to_int('aaa')), to_hex(t + hex_to_int('aaa')) ,categorias[r] || ' ' || to_hex(r + hex_to_int('aaa')) || '-' || to_hex(t + hex_to_int('aaa')));
 			END LOOP;
 		END LOOP;
 	END IF;
