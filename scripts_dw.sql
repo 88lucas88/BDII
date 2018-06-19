@@ -256,8 +256,8 @@ CREATE TABLE tmpVentas (
 	Id_Tiempo int,
 	fecha_vta timestamp,
 	Id_Factura int,
-	Id_Cliente int,				--CLIENTE
-	Id_Producto int,			--PRODUCTO
+	Id_Cliente text,			--CLIENTE
+	Id_Producto text,			--PRODUCTO
 	Id_Sucursal int,
 	Id_medio_pago int, 
 	monto_vendido real,
@@ -276,7 +276,7 @@ DROP TABLE tmpVentas;
 CREATE OR REPLACE FUNCTION CargaTmpVentas(pSuc integer, pMes integer, pAño integer) RETURNS VOID AS
 $$
 DECLARE
-	-- falta el idtiempo
+	
 BEGIN
 	INSERT INTO tmpVentas(fecha_vta, Id_Factura, Id_Cliente, Id_Producto, Id_Sucursal, Id_medio_pago, monto_vendido, cantidad_vendida, nombre_producto,
 	Id_categoria, nombre_cliente, tipo_cliente)	
@@ -291,13 +291,13 @@ BEGIN
 	(SELECT fecha_vta, Id_Factura, Id_Cliente, Id_Producto, Id_Sucursal, Id_medio_pago, 
 	monto_vendido, cantidad_vendida, nombre_producto, descrip_categ, nombre_cliente, TC.id_tipo AS tipo_cliente
 	FROM 
-	(SELECT * FROM dblink ('conect_suc1', 'SELECT fecha_vta, v.nro_factura, c.nro_cliente, p.nro_producto, ' || CAST(pSuc AS text) || 'as Id_Sucursal, 
+	(SELECT * FROM dblink ('conect_suc1', 'SELECT fecha_vta, v.nro_factura, CAST (c.nro_cliente as text), CAST (p.nro_producto as text), ' || CAST(pSuc AS text) || 'as Id_Sucursal, 
 	CASE v.forma_pago WHEN ''contado'' THEN 1 WHEN ''debito'' THEN 2 WHEN ''credito'' THEN 3 WHEN ''transferencia'' THEN 4 END AS Id_medio_pago, 
 	unidad * precio as monto_vendido, unidad as cantidad_vendida, p.nombre, cat.descripcion as descrip_cat, c.nombre, c.tipo
 	FROM "SISTEMA-1".venta v, "SISTEMA-1".detalle_venta dv, "SISTEMA-1".clientes c, "SISTEMA-1".producto p, "SISTEMA-1".categoria cat
 	WHERE v.nro_Factura = dv.nro_Factura and v.nro_cliente = c.nro_cliente and dv.nro_producto = p.nro_producto and p.nro_categ = cat.nro_categ and date_part (''month'', fecha_vta) =  ' || CAST(pMes AS text) || '
 	and date_part (''year'', fecha_vta) = ' || CAST(pAño AS text))
-	AS tmpvent (fecha_vta timestamp, Id_Factura int, Id_Cliente int, Id_Producto int, Id_Sucursal int, Id_medio_pago int, monto_vendido real, cantidad_vendida real, nombre_producto varchar(30), 
+	AS tmpvent (fecha_vta timestamp, Id_Factura int, Id_Cliente text, Id_Producto text, Id_Sucursal int, Id_medio_pago int, monto_vendido real, cantidad_vendida real, nombre_producto varchar(30), 
 	descrip_categ text, nombre_cliente varchar(30), tipo_cliente varchar(30)))
 	AS I 
 	INNER JOIN tipo_cliente AS TC ON (I.tipo_cliente = TC.descripcion))
@@ -317,17 +317,21 @@ CREATE OR REPLACE FUNCTION CargaTmpVentasSN(pSuc integer, pMes integer, pAño in
 $$
 DECLARE
 -- falta el idtiempo
-BEGIN
-	INSERT INTO tmpventas(fecha_vta, id_factura, id_cliente, id_producto, id_sucursal, Id_medio_pago, monto_vendido, cantidad_vendida, 
-		nombre_producto, categ_prod, subcat_prod, precio, nombre_cliente, tipo_cliente)
+BEGIN	
+
+	INSERT INTO tmpventas(fecha_vta, Id_Factura, Id_Cliente, Id_producto, Id_Sucursal, Id_medio_pago, monto_vendido, cantidad_vendida, 
+		nombre_producto, Id_categoria, Id_subcategoria, nombre_cliente, tipo_cliente)
+
 	SELECT * FROM dblink ('conect_suc1', 'SELECT fecha_vta, v.id_factura, c.cod_cliente, p.cod_producto, ' || CAST(pSuc AS text) || 'as Id_Sucursal, 
-		v.cod_medio_pago, unidad * precio as monto_vendido, unidad as cantidad_vendida,p.nombre, p.cod_categoria, p.cod_subcategoria, precio, c.nombre, c.cod_tipo 
+		v.cod_medio_pago, unidad * precio as monto_vendido, unidad as cantidad_vendida,p.nombre, p.cod_categoria, p.cod_subcategoria, c.nombre, c.cod_tipo 
 		FROM "SISTEMA-2".venta v, "SISTEMA-2".detalle_venta dv, "SISTEMA-2".clientes c, "SISTEMA-2".producto p
 		WHERE v.id_factura = dv.id_factura and v.cod_cliente = c.cod_cliente and dv.cod_producto = p.cod_producto and  
 		date_part (''month'', fecha_vta) =  ' || CAST(pMes AS text) || 'and date_part (''year'', fecha_vta) = ' || CAST(pAño AS text))
 		AS tmpvent (fecha_vta timestamp, Id_Factura int, Id_Cliente text, Id_Producto text, Id_Sucursal int, Id_medio_pago int, monto_vendido real, 
-		cantidad_vendida real, nombre_producto varchar(30), categ_prod text, subcat_prod int, precio real, nombre_cliente varchar(30), tipo_cliente int);
-	UPDATE tmpventas SET Id_Tiempo = InsertarTiempo(pMes, pAño) WHERE Id_Tiempo IS NULL;
+		cantidad_vendida real, nombre_producto varchar(30), Id_categoria text, Id_subcategoria text, nombre_cliente varchar(30), tipo_cliente int);
+	
+
+UPDATE tmpventas SET Id_Tiempo = InsertarTiempo(pMes, pAño) WHERE Id_Tiempo IS NULL;
 	
 END;
 $$ LANGUAGE plpgsql;
