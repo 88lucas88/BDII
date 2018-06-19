@@ -230,8 +230,8 @@ CREATE TABLE tmpVentas (
 	monto_vendido real,
 	cantidad_vendida real,
 	nombre_producto varchar(30),		--PRODUCTO
-	Id_categoria int, 			--PRODUCTO
-	Id_subcategoria int , 			--PRODUCTO
+	Id_categoria text, 			--PRODUCTO
+	Id_subcategoria text , 			--PRODUCTO
 	nombre_cliente varchar(30),		--CLIENTE
 	tipo_cliente int 			--CLIENTE
 );
