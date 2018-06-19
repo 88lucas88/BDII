@@ -355,13 +355,25 @@ END;
 $$
 LANGUAGE 'plpgsql' IMMUTABLE STRICT; 
 
---ingreso de clientes de los clientes del viejo sistema
+--ingreso de clientes del viejo sistema desde tmpVentas
 INSERT INTO Clientes
 	SELECT DISTINCT cdw, nombre_cliente, tipo_cliente
 	FROM tmpVentas tmpv, TECliente tec
 	WHERE hex_to_int(tmpv.id_cliente) = tec.cvs AND tec.cdw not in (SELECT id_cliente from Clientes)
---ingreso de clientes de los clientes del nuevo sistema
+--ingreso de clientes del nuevo sistema desde tmpVentas
 INSERT INTO Clientes
 	SELECT DISTINCT cdw, nombre_cliente, tipo_cliente
 	FROM tmpVentas tmpv, TECliente tec
 	WHERE tmpv.id_cliente = tec.cns AND tec.cdw not in (SELECT id_cliente from Clientes)
+
+--ingreso de productos del viejo sistema desde tmpVentas
+INSERT INTO Productos
+	SELECT DISTINCT pdw, id_categoria, id_subcategoria, nombre_producto
+	FROM tmpVentas tmpv, TEProductos tep
+	WHERE hex_to_int(tmpv.id_producto) = tep.pvs and tep.pdw not in (SELECT id_producto from Productos)
+--ingreso de productos del nuevo sistema desde tmpVentas
+INSERT INTO Productos
+	SELECT DISTINCT pdw, id_categoria, id_subcategoria, nombre_producto
+	FROM tmpVentas tmpv, TEProductos tep
+	WHERE tmpv.id_producto = tep.pns and tep.pdw not in (SELECT id_producto from Productos)
+
