@@ -16,6 +16,7 @@ CREATE TABLE TEProductos (
 
 SELECT dblink_connect('conect_suc1', 'port=5434 dbname=PatSur-Suc1 user=postgres password=david'); -- david
 SELECT dblink_connect('conect_suc1', 'hostaddr=192.168.1.112 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres'); --lucas
+SELECT dblink_connect('conect_suc1', 'hostaddr=10.169.0.52 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres'); --lucas2
 
 SELECT dblink_disconnect('conect_suc1');
 
@@ -60,7 +61,7 @@ CREATE TABLE CATEGORIA(
 );
 
 INSERT INTO CATEGORIA (Id_Categoria, Id_subcategoria, descripcion)
-	SELECT cod_categoria, cod_subcategoria, descripcion FROM dblink('conect_suc1','SELECT cod_categoria, cod_subcategoria, descripcion FROM "SISTEMA-2".CATEGORIA') AS categoria(cod_categoria text, cod_subcategoria int, descripcion varchar(30));
+	SELECT cod_categoria, cod_subcategoria, descripcion FROM dblink('conect_suc1','SELECT cod_categoria, cod_subcategoria, descripcion FROM "SISTEMA-2".CATEGORIA') AS categoria(cod_categoria text, cod_subcategoria text, descripcion varchar(30));
 
 -- Tipo_Cliente (Id_Tipo, descripción)
 CREATE TABLE TIPO_CLIENTE(
@@ -255,26 +256,40 @@ BEGIN
 	cantidad_vendida, nombre_producto, C.id_categoria as Id_categoria, nombre_cliente, tipo_cliente FROM
 
 	(SELECT fecha_vta, Id_Factura, Id_Cliente, Id_Producto, Id_Sucursal, Id_medio_pago, 
-	monto_vendido, cantidad_vendida, nombre_producto, categ_prod, nombre_cliente, TC.id_tipo AS tipo_cliente
+	monto_vendido, cantidad_vendida, nombre_producto, descrip_categ, nombre_cliente, TC.id_tipo AS tipo_cliente
 	FROM 
 	(SELECT * FROM dblink ('conect_suc1', 'SELECT fecha_vta, v.nro_factura, c.nro_cliente, p.nro_producto, ' || CAST(pSuc AS text) || 'as Id_Sucursal, 
-	CASE v.forma_pago WHEN ''contado'' THEN 1 WHEN ''tarjeta debito'' THEN 2 WHEN ''tarjeta credito'' THEN 3 WHEN ''transferencia bancaria'' THEN 4 END AS Id_medio_pago, 
-	unidad * precio as monto_vendido, unidad as cantidad_vendida, p.nombre, nro_categ, c.nombre, c.tipo
-	FROM "SISTEMA-1".venta v, "SISTEMA-1".detalle_venta dv, "SISTEMA-1".clientes c, "SISTEMA-1".producto p
-	WHERE v.nro_Factura = dv.nro_Factura and v.nro_cliente = c.nro_cliente and dv.nro_producto = p.nro_producto and date_part (''month'', fecha_vta) =  ' || CAST(pMes AS text) || '
+	CASE v.forma_pago WHEN ''contado'' THEN 1 WHEN ''debito'' THEN 2 WHEN ''credito'' THEN 3 WHEN ''transferencia'' THEN 4 END AS Id_medio_pago, 
+	unidad * precio as monto_vendido, unidad as cantidad_vendida, p.nombre, cat.descripcion as descrip_cat, c.nombre, c.tipo
+	FROM "SISTEMA-1".venta v, "SISTEMA-1".detalle_venta dv, "SISTEMA-1".clientes c, "SISTEMA-1".producto p, "SISTEMA-1".categoria cat
+	WHERE v.nro_Factura = dv.nro_Factura and v.nro_cliente = c.nro_cliente and dv.nro_producto = p.nro_producto and p.nro_categ = cat.nro_categ and date_part (''month'', fecha_vta) =  ' || CAST(pMes AS text) || '
 	and date_part (''year'', fecha_vta) = ' || CAST(pAño AS text))
 	AS tmpvent (fecha_vta timestamp, Id_Factura int, Id_Cliente int, Id_Producto int, Id_Sucursal int, Id_medio_pago int, monto_vendido real, cantidad_vendida real, nombre_producto varchar(30), 
-	categ_prod text, nombre_cliente varchar(30), tipo_cliente varchar(30)))
+	descrip_categ text, nombre_cliente varchar(30), tipo_cliente varchar(30)))
 	AS I 
 	INNER JOIN tipo_cliente AS TC ON (I.tipo_cliente = TC.descripcion))
 
 	AS TCI 
-	INNER JOIN categoria C ON (C.descripcion = TCI.categ_prod)) AS TCII;
+	INNER JOIN categoria C ON (C.descripcion = TCI.descrip_categ)) AS TCII;
 	
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT CargaTmpVentas (1,10,2018);
+SELECT CargaTmpVentas (1,12,2018);
+
+SELECT * FROM
+(SELECT * FROM (SELECT fecha_vta, v.nro_factura, c.nro_cliente, p.nro_producto, CASE v.forma_pago WHEN 'contado' THEN 1 WHEN 'debito' THEN 2 WHEN 'credito' THEN 3 WHEN 'transferencia' THEN 4 END AS Id_medio_pago, 
+unidad * precio as monto_vendido, unidad as cantidad_vendida, p.nombre, cat.descripcion as descrip_cat, c.nombre, c.tipo
+FROM "SISTEMA-1".venta v, "SISTEMA-1".detalle_venta dv, "SISTEMA-1".clientes c, "SISTEMA-1".producto p, "SISTEMA-1".categoria cat
+WHERE v.nro_Factura = dv.nro_Factura and v.nro_cliente = c.nro_cliente and dv.nro_producto = p.nro_producto and p.nro_categ = cat.nro_categ) AS I
+
+INNER JOIN "SISTEMA-2".tipo_cliente C ON (I.tipo = C.descripcion)) AS II
+
+INNER JOIN "SISTEMA-2".categoria cat ON (II.descrip_cat = cat.descripcion);
+
+
+
+
 
 
 --Script ETL - extraccion de datos de ventas desde el sistema de facturacion nuevo

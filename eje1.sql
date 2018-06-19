@@ -1,4 +1,4 @@
------------------------------------------------- Punto 1 -----------------------------------------------
+﻿------------------------------------------------ Punto 1 -----------------------------------------------
 
 ------------------------------------------ Creación Sistema-1 ------------------------------------------
 
@@ -362,7 +362,7 @@ BEGIN
 		FOR r IN minimo .. 11 LOOP
 			"cantSubcategoria" := trunc(random() * "subCategoriaMax" + minimo);
 			FOR t IN minimo .. "cantSubcategoria" LOOP
-				INSERT INTO "SISTEMA-2".categoria(cod_categoria, cod_subcategoria, descripcion) VALUES (to_hex(r + hex_to_int('aaa')), to_hex(t + hex_to_int('aaa')) ,categorias[r] || ' ' || to_hex(r + hex_to_int('aaa')) || '-' || to_hex(t + hex_to_int('aaa')));
+				INSERT INTO "SISTEMA-2".categoria(cod_categoria, cod_subcategoria, descripcion) VALUES (to_hex(r + hex_to_int('aaa')), to_hex(t + hex_to_int('aaa')) ,categorias[r]);
 			END LOOP;
 		END LOOP;
 	END IF;
