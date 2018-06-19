@@ -341,17 +341,3 @@ SELECT CargaTmpVentasSN (2,6,2019);
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-CREATE TABLE "SISTEMA-1".TECliente (
-	cdw serial,
-	cvs integer DEFAULT NULL,
-	cns text DEFAULT NULL,
-	CONSTRAINT pk_tecliente PRIMARY KEY (cdw)
-);
-
-INSERT INTO "SISTEMA-1".TECliente (cvs)
-	SELECT nro_cliente
-	FROM (SELECT nro_cliente FROM "SISTEMA-1".Clientes) AS cv
-
-INSERT INTO "SISTEMA-1".TECliente (cns)
-	SELECT cod_cliente
-	FROM (SELECT cod_cliente FROM "SISTEMA-2".Clientes) AS cn	
