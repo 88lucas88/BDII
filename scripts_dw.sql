@@ -7,6 +7,39 @@ CREATE TABLE TECliente (
 	CONSTRAINT pk_tecliente PRIMARY KEY (cdw)
 );
 
+--carga tabla de equivalencia de clientes
+
+CREATE OR REPLACE FUNCTION CargaTEClientes(porcentajeEquivalentes int) RETURNS VOID AS
+$$
+DECLARE
+	clienteSN text;
+	clienteSV integer;
+	IDclienteSN integer;
+	IDclienteSV integer;
+	totalClientes integer;
+	cantidadEquivalentes  integer;
+BEGIN
+	totalClientes := (SELECT * FROM dblink ('conect_suc1', 'SELECT COUNT(nro_cliente) FROM "SISTEMA-1".Clientes') AS cn(nro_cliente int)) + 
+			(SELECT * FROM dblink ('conect_suc1', 'SELECT COUNT(cod_cliente) FROM "SISTEMA-2".Clientes') AS cn(cod_cliente int)); 
+	cantidadEquivalentes := (totalClientes *  porcentajeEquivalentes)/100;
+	INSERT INTO TECliente (cvs)
+	SELECT * FROM dblink ('conect_suc1', 'SELECT nro_cliente
+	FROM "SISTEMA-1".Clientes') AS cn(nro_cliente int);
+	INSERT INTO TECliente (cns)
+	SELECT * FROM dblink ('conect_suc1', 'SELECT cod_cliente
+	FROM "SISTEMA-2".Clientes') AS cn(cod_cliente text);
+	FOR r IN 1 .. cantidadEquivalentes LOOP
+		SELECT cdw FROM tecliente WHERE cns IS NOT NULL ORDER BY random() LIMIT 1 INTO IDclienteSN;
+		SELECT cns FROM tecliente WHERE cdw = IDclienteSN INTO clienteSN;
+		DELETE FROM tecliente WHERE cdw = IDclienteSN;
+		SELECT cdw FROM tecliente WHERE cns IS NULL ORDER BY random() LIMIT 1 INTO IDclienteSV;
+		UPDATE tecliente SET cns=clienteSN WHERE cdw=IDclienteSV;	
+	END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT CargaTEClientes(20);
+
 CREATE TABLE TEProductos (
 	pdw serial,
 	pvs integer DEFAULT NULL,
