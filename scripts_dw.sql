@@ -15,6 +15,8 @@ CREATE TABLE TEProductos (
 );
 
 SELECT dblink_connect('conect_suc1', 'port=5434 dbname=PatSur-Suc1 user=postgres password=david'); -- le deje solo el puerto y la contraseña del servidor
+SELECT dblink_connect('conect_suc1', 'hostaddr=192.168.1.112 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres');
+
 SELECT dblink_disconnect('conect_suc1');
 
 INSERT INTO TECliente (cns)
@@ -51,7 +53,7 @@ INSERT INTO MEDIO_PAGO (Id_MedioPago,descripción)
 
 -- Categoria (cod_categoria,  cod_subcategoría, descripción)
 CREATE TABLE CATEGORIA(
-	Id_Categoria text NOT NULL, 
+	Id_Categoria int NOT NULL, 
 	Id_subcategoria int NOT NULL,
 	descripcion varchar(30) NULL, 
 	CONSTRAINT PK_ID_CATEGORIA PRIMARY KEY (Id_Categoria, Id_subcategoria)
@@ -128,7 +130,7 @@ DROP TABLE TIEMPO;
 
 CREATE TABLE PRODUCTOS (
 	Id_Producto int NOT NULL,
-	Id_Categoria text NOT NULL,
+	Id_Categoria int NOT NULL,
 	Id_subcategoria int NOT NULL,
 	nombre varchar(30) NOT NULL,
 	CONSTRAINT PK_PRODUCTOS PRIMARY KEY (Id_Producto)
@@ -188,40 +190,20 @@ $$ LANGUAGE plpgsql;
 
 SELECT CargaTiempo();
 
---Creacion de tabla temporal de ventas
-
---CREATE TABLE tmpVentas (
---	fecha_vta timestamp,
---	Id_Factura int,
---	Id_Cliente int,
---	Id_Producto int,
---	Id_Sucursal int,
---	forma_pago varchar(30),
---	monto_vendido real,
---	cantidad_vendida real,
---	nombre_producto varchar(30),
---	categ_prod int,
---	subcat_prod int DEFAULT NULL,
---	precio real,
---	nombre_cliente varchar(30),
---	tipo_cliente varchar(30)
---)
-
 CREATE TABLE tmpVentas (
 	fecha_vta timestamp,
 	Id_Factura int,
-	Id_Cliente text,--modificado
-	Id_Producto text,--modificado
+	Id_Cliente int,				--CLIENTE
+	Id_Producto int,			--PRODUCTO
 	Id_Sucursal int,
-	Id_medio_pago int, --modificado
+	Id_medio_pago int, 
 	monto_vendido real,
 	cantidad_vendida real,
-	nombre_producto varchar(30),
-	categ_prod text, --modificado
-	subcat_prod int , --modidificado
-	precio real, 
-	nombre_cliente varchar(30),
-	tipo_cliente int --modificado
+	nombre_producto varchar(30),		--PRODUCTO
+	Id_categoria int, 			--PRODUCTO
+	Id_subcategoria int , 			--PRODUCTO
+	nombre_cliente varchar(30),		--CLIENTE
+	tipo_cliente int 			--CLIENTE
 );
 
 DROP TABLE tmpVentas;
@@ -233,27 +215,38 @@ $$
 DECLARE
 	-- falta el idtiempo
 BEGIN
-	INSERT INTO tmpVentas(fecha_vta, Id_Factura, Id_Cliente, Id_Producto, Id_Sucursal, forma_pago, monto_vendido, cantidad_vendida, nombre_producto,
-	categ_prod, precio, nombre_cliente, tipo_cliente)	
-	SELECT fecha_vta, Id_Factura, Id_Cliente, Id_Producto, Id_Sucursal, forma_pago, monto_vendido, cantidad_vendida, nombre_producto,
-	categ_prod, precio, nombre_cliente, tipo_cliente
-	FROM (SELECT fecha_vta, Id_Factura, Id_Cliente, Id_Producto, Id_Sucursal, forma_pago, monto_vendido, cantidad_vendida, nombre_producto, 
-	categ_prod, precio, nombre_cliente, TC.id_tipo AS tipo_cliente
-	FROM (SELECT * FROM dblink ('conect_suc1', 'SELECT fecha_vta, v.nro_factura, CAST(c.nro_cliente AS text), CAST(p.nro_producto AS text), ' || CAST(pSuc AS text) || 'as Id_Sucursal, 
-	forma_pago, unidad * precio as monto_vendido, unidad as cantidad_vendida, p.nombre, CAST(p.nro_categ AS text), precio, c.nombre, c.tipo
+	INSERT INTO tmpVentas(fecha_vta, Id_Factura, Id_Cliente, Id_Producto, Id_Sucursal, Id_medio_pago, monto_vendido, cantidad_vendida, nombre_producto,
+	Id_categoria, nombre_cliente, tipo_cliente)	
+
+	SELECT fecha_vta, Id_Factura, Id_Cliente, Id_Producto, Id_Sucursal, Id_medio_pago, monto_vendido, cantidad_vendida, nombre_producto, 
+	Id_categoria, nombre_cliente, tipo_cliente FROM 
+
+
+	(SELECT fecha_vta, Id_Factura, Id_Cliente, Id_Producto, Id_Sucursal, Id_medio_pago, monto_vendido, 
+	cantidad_vendida, nombre_producto, C.id_categoria as Id_categoria, nombre_cliente, tipo_cliente FROM
+
+	(SELECT fecha_vta, Id_Factura, Id_Cliente, Id_Producto, Id_Sucursal, Id_medio_pago, 
+	monto_vendido, cantidad_vendida, nombre_producto, categ_prod, nombre_cliente, TC.id_tipo AS tipo_cliente
+	FROM 
+	(SELECT * FROM dblink ('conect_suc1', 'SELECT fecha_vta, v.nro_factura, c.nro_cliente, p.nro_producto, ' || CAST(pSuc AS text) || 'as Id_Sucursal, 
+	CASE v.forma_pago WHEN ''contado'' THEN 1 WHEN ''tarjeta debito'' THEN 2 WHEN ''tarjeta credito'' THEN 3 WHEN ''transferencia bancaria'' THEN 4 END AS Id_medio_pago, 
+	unidad * precio as monto_vendido, unidad as cantidad_vendida, p.nombre, nro_categ, c.nombre, c.tipo
 	FROM "SISTEMA-1".venta v, "SISTEMA-1".detalle_venta dv, "SISTEMA-1".clientes c, "SISTEMA-1".producto p
 	WHERE v.nro_Factura = dv.nro_Factura and v.nro_cliente = c.nro_cliente and dv.nro_producto = p.nro_producto and date_part (''month'', fecha_vta) =  ' || CAST(pMes AS text) || '
 	and date_part (''year'', fecha_vta) = ' || CAST(pAño AS text))
-	AS tmpvent (fecha_vta timestamp, Id_Factura int, Id_Cliente text, Id_Producto text, Id_Sucursal int, forma_pago varchar(30), monto_vendido real, cantidad_vendida real, nombre_producto varchar(30), 
-	categ_prod text, precio real, nombre_cliente varchar(30), tipo_cliente varchar(30))) 
-	AS I JOIN tipo_cliente AS TC ON I.tipo_cliente = TC.descripcion) AS TCI;
-	
-	-- falta la parte que cambia la descripcion de forma_pago al id_mediopago 
+	AS tmpvent (fecha_vta timestamp, Id_Factura int, Id_Cliente int, Id_Producto int, Id_Sucursal int, Id_medio_pago int, monto_vendido real, cantidad_vendida real, nombre_producto varchar(30), 
+	categ_prod text, nombre_cliente varchar(30), tipo_cliente varchar(30)))
+	AS I 
+	INNER JOIN tipo_cliente AS TC ON (I.tipo_cliente = TC.descripcion))
+
+	AS TCI 
+	INNER JOIN categoria C ON (C.descripcion = TCI.categ_prod)) AS TCII;
 	
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT CargaTmpVentas (1,9,2018);
+SELECT CargaTmpVentas (1,10,2018);
+
 
 --Script ETL - extraccion de datos de ventas desde el sistema de facturacion nuevo
 
