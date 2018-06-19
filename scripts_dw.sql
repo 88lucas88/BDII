@@ -368,7 +368,7 @@ INSERT INTO Clientes
 
 --ingreso de productos del viejo sistema desde tmpVentas
 INSERT INTO Productos
-	SELECT DISTINCT pdw, id_categoria, id_subcategoria, nombre_producto
+	SELECT DISTINCT pdw, id_categoria, 'aab', nombre_producto
 	FROM tmpVentas tmpv, TEProductos tep
 	WHERE hex_to_int(tmpv.id_producto) = tep.pvs and tep.pdw not in (SELECT id_producto from Productos)
 --ingreso de productos del nuevo sistema desde tmpVentas
@@ -376,4 +376,3 @@ INSERT INTO Productos
 	SELECT DISTINCT pdw, id_categoria, id_subcategoria, nombre_producto
 	FROM tmpVentas tmpv, TEProductos tep
 	WHERE tmpv.id_producto = tep.pns and tep.pdw not in (SELECT id_producto from Productos)
-
