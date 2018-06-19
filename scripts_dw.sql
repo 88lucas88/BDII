@@ -196,7 +196,7 @@ CREATE TABLE VENTAS (
 	cantidad_vendida int,
 	CONSTRAINT PK_FACTURA PRIMARY KEY (Id_Factura)
 );
-
+DROP TABLE VENTAS;
 
 /*
 CREATE OR REPLACE FUNCTION CargaTiempo() RETURNS VOID AS
@@ -376,3 +376,21 @@ INSERT INTO Productos
 	SELECT DISTINCT pdw, id_categoria, id_subcategoria, nombre_producto
 	FROM tmpVentas tmpv, TEProductos tep
 	WHERE tmpv.id_producto = tep.pns and tep.pdw not in (SELECT id_producto from Productos)
+
+--ingreso de ventas del viejo sistema desde tmpVentas
+INSERT INTO Ventas
+SELECT id_tiempo, fecha_vta, id_factura, cdw, pdw, id_sucursal, id_medio_pago, monto_vendido, cantidad_vendida
+FROM tmpVentas tmpv, TECliente tec, TEProductos tep
+WHERE hex_to_int(tmpv.id_cliente) = tec.cvs AND hex_to_int(tmpv.id_producto) = tep.pvs
+
+SELECT * FROM Ventas
+SELECT id_factura, count (id_factura) FROM tmpVentas
+GROUP BY (id_factura)
+SELECT * FROM 
+
+--ingreso de ventas del nuevo sistema desde tmpVentas
+INSERT INTO Ventas
+SELECT id_tiempo, fecha_vta, id_factura, cdw, pdw, id_sucursal, id_medio_pago, monto_vendido, cantidad_vendida
+FROM tmpVentas tmpv, TECliente tec, TEProductos tep
+WHERE tmpv.id_cliente = tec.cns AND tmpv.id_producto = tep.pns
+
