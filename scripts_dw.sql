@@ -1,5 +1,10 @@
 ﻿CREATE EXTENSION dblink;
 
+SELECT dblink_connect('conect_suc1', 'port=5434 dbname=PatSur-Suc1 user=postgres password=david'); -- david
+SELECT dblink_connect('conect_suc1', 'hostaddr=192.168.1.112 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres'); --lucas
+SELECT dblink_connect('conect_suc1', 'hostaddr=10.169.0.52 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres'); --lucas2
+
+SELECT dblink_disconnect('conect_suc1');
 CREATE TABLE TECliente (
 	cdw serial,
 	cvs integer DEFAULT NULL,
@@ -47,33 +52,59 @@ CREATE TABLE TEProductos (
 	CONSTRAINT pk_teproductos PRIMARY KEY (pdw)
 );
 
-SELECT dblink_connect('conect_suc1', 'port=5434 dbname=PatSur-Suc1 user=postgres password=david'); -- david
-SELECT dblink_connect('conect_suc1', 'hostaddr=192.168.1.112 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres'); --lucas
-SELECT dblink_connect('conect_suc1', 'hostaddr=10.169.0.52 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres'); --lucas2
+--carga tabla de equivalencia de productos
 
-SELECT dblink_disconnect('conect_suc1');
+CREATE OR REPLACE FUNCTION CargaTEProductos(porcentajeEquivalentes int) RETURNS VOID AS
+$$
+DECLARE
+	productoSN text;
+	productoSV integer;
+	IDproductoSN integer;
+	IDproductoSV integer;
+	totalProductos integer;
+	cantidadEquivalentes  integer;
+BEGIN
+	totalProductos := (SELECT * FROM dblink ('conect_suc1', 'SELECT COUNT(nro_cliente) FROM "SISTEMA-1".Clientes') AS cn(nro_cliente int)) + 
+			(SELECT * FROM dblink ('conect_suc1', 'SELECT COUNT(cod_cliente) FROM "SISTEMA-2".Clientes') AS cn(cod_cliente int)); 
+	cantidadEquivalentes := (totalProductos *  porcentajeEquivalentes)/100;
+	INSERT INTO teproductos (pvs)
+	SELECT * FROM dblink ('conect_suc1', 'SELECT nro_producto FROM "SISTEMA-1".producto') AS cn(nro_producto int);
+	INSERT INTO teproductos (pns)
+	SELECT * FROM dblink ('conect_suc1', 'SELECT cod_producto FROM "SISTEMA-2".producto') AS cn(cod_producto text);
+	FOR r IN 1 .. cantidadEquivalentes LOOP
+		SELECT pdw FROM teproductos WHERE pns IS NOT NULL ORDER BY random() LIMIT 1 INTO IDproductoSN;
+		SELECT pns FROM teproductos WHERE pdw = IDproductoSN INTO productoSN;
+		DELETE FROM teproductos WHERE pdw = IDproductoSN;
+		SELECT pdw FROM teproductos WHERE pns IS NULL ORDER BY random() LIMIT 1 INTO IDproductoSV;
+		UPDATE teproductos SET pns=productoSN WHERE pdw=IDproductoSV;
+			
+	END LOOP;
+END;
+$$ LANGUAGE plpgsql;
 
-INSERT INTO TECliente (cns)
-	SELECT cod_cliente FROM dblink('conect_suc1','SELECT cod_cliente FROM "SISTEMA-2".CLIENTES') AS cliente(cod_cliente text);
+SELECT CargaTEProductos(20);
 
-INSERT INTO TECliente (cvs)
-	SELECT nro_cliente FROM dblink('conect_suc1','SELECT nro_cliente FROM "SISTEMA-1".CLIENTES') AS cliente(nro_cliente integer);
+--INSERT INTO TECliente (cns)
+--	SELECT cod_cliente FROM dblink('conect_suc1','SELECT cod_cliente FROM "SISTEMA-2".CLIENTES') AS cliente(cod_cliente text);
+
+--INSERT INTO TECliente (cvs)
+--	SELECT nro_cliente FROM dblink('conect_suc1','SELECT nro_cliente FROM "SISTEMA-1".CLIENTES') AS cliente(nro_cliente integer);
 
 --Aplicación de UPDATE y DELETE manuales a la tabla TEClientes casos que corresponden al mismo cliente
-UPDATE TECliente SET cvs = 23 WHERE cns = 1; --EJEMPLO
-DELETE FROM TEClientes WHERE cvs = 55;
+--UPDATE TECliente SET cvs = 23 WHERE cns = 1; --EJEMPLO
+--DELETE FROM TEClientes WHERE cvs = 55;
 
 --Insercion de productos de ambos sistemas en Tabla de equivalencia de productos
-INSERT INTO TEProductos (pns)
-	SELECT cod_producto FROM dblink('conect_suc1','SELECT cod_producto FROM "SISTEMA-2".PRODUCTO') AS productos(cod_producto text);
+--INSERT INTO TEProductos (pns)
+--	SELECT cod_producto FROM dblink('conect_suc1','SELECT cod_producto FROM "SISTEMA-2".PRODUCTO') AS productos(cod_producto text);
 
-INSERT INTO TEProductos (pvs)
-	SELECT nro_producto FROM dblink('conect_suc1','SELECT nro_producto FROM "SISTEMA-1".PRODUCTO') AS productos(nro_producto integer);
+--INSERT INTO TEProductos (pvs)
+--	SELECT nro_producto FROM dblink('conect_suc1','SELECT nro_producto FROM "SISTEMA-1".PRODUCTO') AS productos(nro_producto integer);
 
 
 --Aplicación de UPDATE y DELETE manuales a la tabla TEProductos casos que corresponden al mismo producto
-UPDATE TEProductos SET pvs = 23 WHERE pns = 1; --EJEMPLO
-DELETE FROM TEProductos WHERE pvs = 55;
+--UPDATE TEProductos SET pvs = 23 WHERE pns = 1; --EJEMPLO
+--DELETE FROM TEProductos WHERE pvs = 55;
 
 ----------------------------------------------------------------
 CREATE TABLE MEDIO_PAGO(
@@ -280,10 +311,9 @@ DECLARE
 BEGIN
 	INSERT INTO tmpVentas(fecha_vta, Id_Factura, Id_Cliente, Id_Producto, Id_Sucursal, Id_medio_pago, monto_vendido, cantidad_vendida, nombre_producto,
 	Id_categoria, nombre_cliente, tipo_cliente)	
-
+	
 	SELECT fecha_vta, Id_Factura, Id_Cliente, Id_Producto, Id_Sucursal, Id_medio_pago, monto_vendido, cantidad_vendida, nombre_producto, 
 	Id_categoria, nombre_cliente, tipo_cliente FROM 
-
 
 	(SELECT fecha_vta, Id_Factura, Id_Cliente, Id_Producto, Id_Sucursal, Id_medio_pago, monto_vendido, 
 	cantidad_vendida, nombre_producto, C.id_categoria as Id_categoria, nombre_cliente, tipo_cliente FROM
@@ -301,7 +331,6 @@ BEGIN
 	descrip_categ text, nombre_cliente varchar(30), tipo_cliente varchar(30)))
 	AS I 
 	INNER JOIN tipo_cliente AS TC ON (I.tipo_cliente = TC.descripcion))
-
 	AS TCI 
 	INNER JOIN categoria C ON (C.descripcion = TCI.descrip_categ)) AS TCII;
 
@@ -318,7 +347,6 @@ $$
 DECLARE
 
 BEGIN	
-
 	INSERT INTO tmpventas(fecha_vta, Id_Factura, Id_Cliente, Id_producto, Id_Sucursal, Id_medio_pago, monto_vendido, cantidad_vendida, 
 		nombre_producto, Id_categoria, Id_subcategoria, nombre_cliente, tipo_cliente)
 
@@ -330,9 +358,7 @@ BEGIN
 		AS tmpvent (fecha_vta timestamp, Id_Factura int, Id_Cliente text, Id_Producto text, Id_Sucursal int, Id_medio_pago int, monto_vendido real, 
 		cantidad_vendida real, nombre_producto varchar(30), Id_categoria text, Id_subcategoria text, nombre_cliente varchar(30), tipo_cliente int);
 	
-
 	UPDATE tmpventas SET Id_Tiempo = InsertarTiempo(pMes, pAño) WHERE Id_Tiempo IS NULL;
-	
 END;
 $$ LANGUAGE plpgsql;
 
@@ -345,15 +371,15 @@ SELECT CargaTmpVentasSN (2,6,2019);
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION hex_to_int(hexval varchar) RETURNS integer AS $$
-DECLARE
-	result  int;
-BEGIN
-	EXECUTE 'SELECT x''' || hexval || '''::int' INTO result;
-	RETURN result;
-END;
-$$
-LANGUAGE 'plpgsql' IMMUTABLE STRICT; 
+--CREATE OR REPLACE FUNCTION hex_to_int(hexval varchar) RETURNS integer AS $$
+--DECLARE
+--	result  int;
+--BEGIN
+--	EXECUTE 'SELECT x''' || hexval || '''::int' INTO result;
+--	RETURN result;
+--END;
+--$$
+--LANGUAGE 'plpgsql' IMMUTABLE STRICT; 
 
 --ingreso de clientes del viejo sistema desde tmpVentas
 INSERT INTO Clientes
