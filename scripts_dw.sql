@@ -5,6 +5,7 @@ SELECT dblink_connect('conect_suc1', 'hostaddr=192.168.1.112 port=5432 dbname=Pa
 SELECT dblink_connect('conect_suc1', 'hostaddr=10.169.0.52 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres'); --lucas2
 
 SELECT dblink_disconnect('conect_suc1');
+
 CREATE TABLE TECliente (
 	cdw serial,
 	cvs integer DEFAULT NULL,
