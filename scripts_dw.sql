@@ -1,4 +1,4 @@
-﻿CREATE EXTENSION dblink;
+CREATE EXTENSION dblink;
 
 SELECT dblink_connect('conect_suc1', 'port=5434 dbname=PatSur-Suc1 user=postgres password=david'); -- david
 SELECT dblink_connect('conect_suc1', 'hostaddr=192.168.1.112 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres'); --lucas
@@ -14,7 +14,6 @@ CREATE TABLE TECliente (
 );
 
 --carga tabla de equivalencia de clientes
-
 CREATE OR REPLACE FUNCTION CargaTEClientes(porcentajeEquivalentes int) RETURNS VOID AS
 $$
 DECLARE
@@ -54,7 +53,6 @@ CREATE TABLE TEProductos (
 );
 
 --carga tabla de equivalencia de productos
-
 CREATE OR REPLACE FUNCTION CargaTEProductos(porcentajeEquivalentes int) RETURNS VOID AS
 $$
 DECLARE
@@ -85,29 +83,6 @@ $$ LANGUAGE plpgsql;
 
 SELECT CargaTEProductos(20);
 
---INSERT INTO TECliente (cns)
---	SELECT cod_cliente FROM dblink('conect_suc1','SELECT cod_cliente FROM "SISTEMA-2".CLIENTES') AS cliente(cod_cliente text);
-
---INSERT INTO TECliente (cvs)
---	SELECT nro_cliente FROM dblink('conect_suc1','SELECT nro_cliente FROM "SISTEMA-1".CLIENTES') AS cliente(nro_cliente integer);
-
---Aplicación de UPDATE y DELETE manuales a la tabla TEClientes casos que corresponden al mismo cliente
---UPDATE TECliente SET cvs = 23 WHERE cns = 1; --EJEMPLO
---DELETE FROM TEClientes WHERE cvs = 55;
-
---Insercion de productos de ambos sistemas en Tabla de equivalencia de productos
---INSERT INTO TEProductos (pns)
---	SELECT cod_producto FROM dblink('conect_suc1','SELECT cod_producto FROM "SISTEMA-2".PRODUCTO') AS productos(cod_producto text);
-
---INSERT INTO TEProductos (pvs)
---	SELECT nro_producto FROM dblink('conect_suc1','SELECT nro_producto FROM "SISTEMA-1".PRODUCTO') AS productos(nro_producto integer);
-
-
---Aplicación de UPDATE y DELETE manuales a la tabla TEProductos casos que corresponden al mismo producto
---UPDATE TEProductos SET pvs = 23 WHERE pns = 1; --EJEMPLO
---DELETE FROM TEProductos WHERE pvs = 55;
-
-----------------------------------------------------------------
 CREATE TABLE MEDIO_PAGO(
 	Id_MedioPago int NOT NULL, 
 	descripción varchar(30) NULL,
@@ -206,15 +181,19 @@ ALTER TABLE PRODUCTOS
 ADD CONSTRAINT FK_CATEGORIA FOREIGN KEY (Id_Categoria,Id_subcategoria)
 REFERENCES CATEGORIA(Id_Categoria,Id_subcategoria);
 
+DROP TABLE PRODUCTOS;
+
 CREATE TABLE CLIENTES (
 	Id_Cliente int NOT NULL,
-	nombre varchar(30) NOT NULL,
+	nombre text NOT NULL,
 	Id_Tipo int NOT NULL,
 	CONSTRAINT PK_CLIENTES PRIMARY KEY (Id_Cliente)
 );
 
 ALTER TABLE CLIENTES
 ADD CONSTRAINT FK_TIPO_CLIENTE FOREIGN KEY (Id_Tipo) REFERENCES TIPO_CLIENTE (Id_Tipo);
+
+DROP TABLE CLIENTES;
 
 CREATE TABLE VENTAS (
 	Id_Tiempo int,
@@ -225,46 +204,18 @@ CREATE TABLE VENTAS (
 	Id_Sucursal int,
 	Id_MedioPago int,
 	monto_vendido real,
-	cantidad_vendida int,
-	CONSTRAINT PK_FACTURA PRIMARY KEY (Id_Factura)
+	cantidad_vendida int
+	--,
+	--CONSTRAINT PK_FACTURA PRIMARY KEY (Id_Factura)
 );
+
 DROP TABLE VENTAS;
-
-/*
-CREATE OR REPLACE FUNCTION CargaTiempo() RETURNS VOID AS
-$$
-DECLARE
-	año_min integer := 2011; año_max integer := 2018;
-	i integer; j integer;
-	Id_Tiempo_Max integer;
-
-BEGIN
-	FOR i IN año_min..año_max LOOP
-		FOR j IN 1..12 LOOP
-			CASE 
-				WHEN (j>=1 AND j<=3) THEN
-					INSERT INTO TIEMPO (mes,año,trimetres) VALUES (j,i,1);
-				WHEN (j>=4 AND j<=6) THEN
-					INSERT INTO TIEMPO (mes,año,trimetres) VALUES (j,i,2);
-				WHEN (j>=7 AND j<=9) THEN
-					INSERT INTO TIEMPO (mes,año,trimetres) VALUES (j,i,3);
-				ELSE
-					INSERT INTO TIEMPO (mes,año,trimetres) VALUES (j,i,4);
-			END CASE;
-		END LOOP;
-	END LOOP;
-END;
-$$ LANGUAGE plpgsql;
-
-SELECT CargaTiempo();
-*/
 
 CREATE OR REPLACE FUNCTION InsertarTiempo(mesI integer, añoI integer) RETURNS integer AS
 $$
 DECLARE
 	id integer;
 BEGIN
-
 	SELECT id_tiempo FROM public.tiempo WHERE mes=mesI and "año"= añoI into id;
 	IF id IS NULL THEN
 		CASE 
@@ -304,7 +255,6 @@ CREATE TABLE tmpVentas (
 DROP TABLE tmpVentas;
 
 --Script ETL - extraccion de datos de ventas desde el sistema de facturacion viejo
-
 CREATE OR REPLACE FUNCTION CargaTmpVentas(pSuc integer, pMes integer, pAño integer) RETURNS VOID AS
 $$
 DECLARE
@@ -312,13 +262,10 @@ DECLARE
 BEGIN
 	INSERT INTO tmpVentas(fecha_vta, Id_Factura, Id_Cliente, Id_Producto, Id_Sucursal, Id_medio_pago, monto_vendido, cantidad_vendida, nombre_producto,
 	Id_categoria, nombre_cliente, tipo_cliente)	
-	
 	SELECT fecha_vta, Id_Factura, Id_Cliente, Id_Producto, Id_Sucursal, Id_medio_pago, monto_vendido, cantidad_vendida, nombre_producto, 
 	Id_categoria, nombre_cliente, tipo_cliente FROM 
-
 	(SELECT fecha_vta, Id_Factura, Id_Cliente, Id_Producto, Id_Sucursal, Id_medio_pago, monto_vendido, 
 	cantidad_vendida, nombre_producto, C.id_categoria as Id_categoria, nombre_cliente, tipo_cliente FROM
-
 	(SELECT fecha_vta, Id_Factura, Id_Cliente, Id_Producto, Id_Sucursal, Id_medio_pago, 
 	monto_vendido, cantidad_vendida, nombre_producto, descrip_categ, nombre_cliente, TC.id_tipo AS tipo_cliente
 	FROM 
@@ -333,7 +280,7 @@ BEGIN
 	AS I 
 	INNER JOIN tipo_cliente AS TC ON (I.tipo_cliente = TC.descripcion))
 	AS TCI 
-	INNER JOIN categoria C ON (C.descripcion = TCI.descrip_categ)) AS TCII;
+	INNER JOIN (select descripcion, id_categoria from categoria group by descripcion, id_categoria) AS C ON C.descripcion = TCI.descrip_categ) AS TCII;
 
 	UPDATE tmpventas SET Id_Tiempo = InsertarTiempo(pMes, pAño) WHERE Id_Tiempo IS NULL;
 END;
@@ -342,7 +289,6 @@ $$ LANGUAGE plpgsql;
 SELECT CargaTmpVentas (1,12,2018);
 
 --Script ETL - extraccion de datos de ventas desde el sistema de facturacion nuevo
-
 CREATE OR REPLACE FUNCTION CargaTmpVentasSN(pSuc integer, pMes integer, pAño integer) RETURNS VOID AS
 $$
 DECLARE
@@ -358,38 +304,31 @@ BEGIN
 		date_part (''month'', fecha_vta) =  ' || CAST(pMes AS text) || 'and date_part (''year'', fecha_vta) = ' || CAST(pAño AS text))
 		AS tmpvent (fecha_vta timestamp, Id_Factura int, Id_Cliente text, Id_Producto text, Id_Sucursal int, Id_medio_pago int, monto_vendido real, 
 		cantidad_vendida real, nombre_producto varchar(30), Id_categoria text, Id_subcategoria text, nombre_cliente varchar(30), tipo_cliente int);
-	
 	UPDATE tmpventas SET Id_Tiempo = InsertarTiempo(pMes, pAño) WHERE Id_Tiempo IS NULL;
 END;
 $$ LANGUAGE plpgsql;
 
-
 SELECT CargaTmpVentasSN (2,6,2019);
 
-
--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
---CREATE OR REPLACE FUNCTION hex_to_int(hexval varchar) RETURNS integer AS $$
---DECLARE
---	result  int;
---BEGIN
---	EXECUTE 'SELECT x''' || hexval || '''::int' INTO result;
---	RETURN result;
---END;
---$$
---LANGUAGE 'plpgsql' IMMUTABLE STRICT; 
+-- elimna apelidos de  nombre_cliente
+CREATE OR REPLACE FUNCTION cortarApellidos(nombre text) RETURNS text AS $$
+DECLARE
+	result text;
+BEGIN
+	SELECT REGEXP_REPLACE(nombre, '^((\w+\s)*\w+,\s)', '') INTO result;
+	RETURN result;
+END;
+$$ LANGUAGE plpgsql; 
 
 --ingreso de clientes del viejo sistema desde tmpVentas
 INSERT INTO Clientes
-	SELECT DISTINCT cdw, nombre_cliente, tipo_cliente
+	SELECT DISTINCT cdw, cortarApellidos(nombre_cliente), tipo_cliente
 	FROM tmpVentas tmpv, TECliente tec
 	WHERE tmpv.id_cliente = CAST (tec.cvs as text) AND tec.cdw not in (SELECT id_cliente from Clientes)
+
 --ingreso de clientes del nuevo sistema desde tmpVentas
 INSERT INTO Clientes
-	SELECT DISTINCT cdw, nombre_cliente, tipo_cliente
+	SELECT DISTINCT cdw, cortarApellidos(nombre_cliente), tipo_cliente
 	FROM tmpVentas tmpv, TECliente tec
 	WHERE tmpv.id_cliente = tec.cns AND tec.cdw not in (SELECT id_cliente from Clientes)
 
@@ -398,6 +337,7 @@ INSERT INTO Productos
 	SELECT DISTINCT pdw, id_categoria, 'aab', nombre_producto
 	FROM tmpVentas tmpv, TEProductos tep
 	WHERE tmpv.id_producto = CAST (tep.pvs as text) and tep.pdw not in (SELECT id_producto from Productos)
+
 --ingreso de productos del nuevo sistema desde tmpVentas
 INSERT INTO Productos
 	SELECT DISTINCT pdw, id_categoria, id_subcategoria, nombre_producto
@@ -410,14 +350,15 @@ SELECT id_tiempo, fecha_vta, id_factura, cdw, pdw, id_sucursal, id_medio_pago, m
 FROM tmpVentas tmpv, TECliente tec, TEProductos tep
 WHERE tmpv.id_cliente = CAST (tec.cvs as text) AND tmpv.id_producto = CAST (tep.pvs as text)
 
-SELECT * FROM Ventas
-SELECT id_factura, count (id_factura) FROM tmpVentas
-GROUP BY (id_factura)
-SELECT * FROM 
-
 --ingreso de ventas del nuevo sistema desde tmpVentas
 INSERT INTO Ventas
 SELECT id_tiempo, fecha_vta, id_factura, cdw, pdw, id_sucursal, id_medio_pago, monto_vendido, cantidad_vendida
 FROM tmpVentas tmpv, TECliente tec, TEProductos tep
 WHERE tmpv.id_cliente = tec.cns AND tmpv.id_producto = tep.pns
+
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
