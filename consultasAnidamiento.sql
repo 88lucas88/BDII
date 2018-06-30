@@ -31,7 +31,7 @@ region(id_region,descripcion)
 
 --	De cada cliente se desea conocer cuales son los que generan mayores ingresos a la cooperativa.
 
-SELECT C.nombre, sum(V.monto_vendido) as total_ingreso, rank() over (order by (sum(V.monto_vendido) desc) as pos
+SELECT C.nombre, sum(V.monto_vendido) as total_ingreso, rank() over (order by (sum(V.monto_vendido)) desc) as pos
 FROM Clientes C, Ventas V
 WHERE C.id_cliente = V.id_cliente
 GROUP BY C.id_cliente
