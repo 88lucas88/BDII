@@ -1,7 +1,7 @@
 ﻿--4) Implementar consultas para las vistas que los analistas requirieron
 --	Venta vista por mes o por año, por sucursal, por región, por cliente y demás combinaciones entre las perspectivas.
 
-SELECT T.mes, T.año, S.descripcion, C.descripcion, CL.nombre
+SELECT T.mes, T.año, S.descripcion, C.descripcion, CL.nombre, sum(monto_venido), sum(V.cantidad_vendida)
 FROM ventas V, tiempo T, sucursal S, ciudad C, clientes CL
 WHERE V.id_tiempo = T.id_tiempo and V.id_sucursal = S.id_sucursal
 	and S.id_ciudad = C.id_ciudad and V.id_cliente = CL.id_cliente
@@ -15,7 +15,7 @@ GROUP BY CUBE(T.mes, T.año,
 
 --	Es necesario conocer también de que manera influye, en las ventas de productos, la zona geográfica en la que están ubicados los locales.
 
-SELECT R.descripcion, P.descripcion, C.descripcion, sum(V.monto_vendido)
+SELECT R.descripcion, P.descripcion, C.descripcion, sum(V.monto_vendido), sum(V.cantidad_vendida)
 FROM ventas V, sucursal S, ciudad C, provincia P, region R
 WHERE V.id_sucursal = S.id_sucursal and S.id_ciudad = C.id_ciudad
 	and C.id_provincia = P.id_provincia and P.id_region = R.id_region
@@ -31,7 +31,7 @@ region(id_region,descripcion)
 
 --	De cada cliente se desea conocer cuales son los que generan mayores ingresos a la cooperativa.
 
-SELECT C.nombre, sum(V.monto_vendido) as total_ingreso, rank() over (order by (sum(V.monto_vendido)) desc) as pos
+SELECT C.nombre, sum(cantidad_vendida), sum(V.monto_vendido) as total_ingreso, rank() over (order by (sum(V.monto_vendido)) desc) as pos
 FROM Clientes C, Ventas V
 WHERE C.id_cliente = V.id_cliente
 GROUP BY C.id_cliente
@@ -39,8 +39,7 @@ ORDER BY pos
 
 --	Se necesitará hacer análisis diarios, mensuales, trimestrales y anuales.
 
-
-SELECT T.mes, T.año, T.trimetres, sum(V.monto_vendido) as total_ingreso
+SELECT V.fecha, T.mes, T.año, T.trimetres, sum(cantidad_vendida) as cantidad_total, sum(V.monto_vendido) as total_ingreso
 FROM Ventas V, Tiempo T
 WHERE V.id_tiempo = T.id_tiempo
 GROUP BY ROLLUP(T.año, T.trimetres, T.mes)
