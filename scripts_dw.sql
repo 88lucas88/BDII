@@ -114,6 +114,10 @@ CREATE TABLE TIPO_CLIENTE(
 INSERT INTO TIPO_CLIENTE (Id_Tipo, descripcion)
 	SELECT cod_tipo, descripcion FROM dblink('conect_suc1','SELECT cod_tipo, descripcion FROM "SISTEMA-2".TIPO_CLIENTE') AS tipo_cliente(cod_tipo int, descripcion varchar(30));
 
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 --TABLA SUCURSAL
 CREATE TABLE SUCURSAL (
 	Id_Sucursal int NOT NULL,
@@ -157,8 +161,25 @@ ADD CONSTRAINT FK_REGION FOREIGN KEY(Id_Region)
 REFERENCES REGION (Id_Region)
 on delete restrict on update restrict;
 
-/*************************HACER INSERTS
-Region (1 o 2 tuplas), Provincia (1 provincia), Ciudad (3 tuplas), Sucursal (3 tuplas)*/
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+INSERT INTO region VALUES (1, 'Patagonica');
+INSERT INTO region VALUES (2, 'Centro-Este');
+
+INSERT INTO provincia VALUES (1,'Chubut',1);
+INSERT INTO provincia VALUES (2,'Buenos Aires',2);
+
+INSERT INTO ciudad VALUES (1, 'Trelew', 1);
+INSERT INTO ciudad VALUES (2, 'Rawson', 1);
+INSERT INTO ciudad VALUES (3, 'La Plata', 2);
+
+INSERT INTO public.sucursal(id_sucursal, descripcion, id_ciudad) VALUES (1, 'Sucursal 1', 1);
+INSERT INTO public.sucursal(id_sucursal, descripcion, id_ciudad) VALUES (2, 'Sucursal 2', 2);
+INSERT INTO public.sucursal(id_sucursal, descripcion, id_ciudad) VALUES (3, 'Sucursal 3', 3);
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 CREATE TABLE TIEMPO (
 	Id_Tiempo serial,
