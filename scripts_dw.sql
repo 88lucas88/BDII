@@ -1,8 +1,9 @@
-CREATE EXTENSION dblink;
+﻿CREATE EXTENSION dblink;
 
 SELECT dblink_connect('conect_suc1', 'port=5434 dbname=PatSur-Suc1 user=postgres password=david'); -- david
 SELECT dblink_connect('conect_suc1', 'hostaddr=192.168.1.112 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres'); --lucas
-SELECT dblink_connect('conect_suc1', 'hostaddr=10.169.0.52 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres'); --lucas2
+SELECT dblink_connect('conect_suc1', 'hostaddr=192.168.43.243 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres'); --lucas3
+SELECT dblink_connect('conect_suc1', 'hostaddr=10.169.0.97 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres'); --lucas2
 
 SELECT dblink_disconnect('conect_suc1');
 
@@ -286,7 +287,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT CargaTmpVentas (1,12,2018);
+SELECT CargaTmpVentas (3,12,2018);
 
 --Script ETL - extraccion de datos de ventas desde el sistema de facturacion nuevo
 CREATE OR REPLACE FUNCTION CargaTmpVentasSN(pSuc integer, pMes integer, pAño integer) RETURNS VOID AS
@@ -308,7 +309,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT CargaTmpVentasSN (2,6,2019);
+SELECT CargaTmpVentasSN (1,2,2019);
 
 -- elimna apelidos de  nombre_cliente
 CREATE OR REPLACE FUNCTION cortarApellidos(nombre text) RETURNS text AS $$
@@ -361,4 +362,29 @@ WHERE tmpv.id_cliente = tec.cns AND tmpv.id_producto = tep.pns
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+SELECT InsertarTiempo(05,2017)
+SELECT * FROM Ventas
+SELECT * FROM Ventas WHERE date_part('year',fecha)=2017
 
+UPDATE Ventas SET id_tiempo=6 WHERE id_factura=621
+
+SELECT * FROM tiempo
+
+
+
+CREATE OR REPLACE FUNCTION cargagenerica(ainicial integer, afinal integer) RETURNS VOID AS
+$$
+DECLARE
+	i integer; j integer; a record;
+BEGIN
+
+	FOR i IN ainicial .. afinal LOOP
+		FOR j IN 1 .. 12 LOOP
+			SELECT * INTO a FROM (SELECT CargaTmpVentas (3,j,i)) as s;
+		END LOOP;
+	END LOOP;
+
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT cargagenerica (2017, 2019);
