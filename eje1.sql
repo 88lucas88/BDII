@@ -189,7 +189,7 @@ DECLARE
 	"baseCantidadVentas" integer;
 	"limiteCantidadVentas" integer;
 	"forma_pagoV" varchar(30);
-	"diaMaxV" integer := 2400;
+	"diaMaxV" integer := 1094;
 	"diasV" integer;
 	"nroClienteV" int;
 	"nombreClienteV" varchar(30);
@@ -205,7 +205,7 @@ DECLARE
 	"cantidadCategorias" integer;
 	minimo integer := 1;
 	categorias varchar(30)[];
-	fecha_minima timestamp;		
+	fecha_maxima timestamp := '2015-12-31 00:00:00';		
 
 BEGIN		
 	-- carga clientes
@@ -250,13 +250,13 @@ BEGIN
 	END IF;
 	"baseCantidadVentas" := "baseCantidadVentas" + minimo;
 	"limiteCantidadVentas" := "baseCantidadVentas" + cantidad - minimo;
-	fecha_minima := current_date - CAST("diaMaxV"||' days' AS INTERVAL);
+	fecha_maxima := fecha_maxima - CAST("diaMaxV"||' days' AS INTERVAL);
 	FOR r IN "baseCantidadVentas" .. "limiteCantidadVentas" LOOP
 		SELECT d.n FROM (SELECT n FROM unnest(ARRAY['contado','debito','credito','transferencia']) AS n) AS d ORDER BY random() LIMIT 1 INTO "forma_pagoV";
 		"diasV" := trunc(random() * "diaMaxV" + minimo);
 		SELECT nro_cliente FROM "SISTEMA-1".clientes ORDER BY random() LIMIT minimo INTO "nroClienteV";
 		SELECT nombre FROM "SISTEMA-1".clientes WHERE nro_cliente = "nroClienteV" INTO "nombreClienteV";
-		INSERT INTO "SISTEMA-1".venta(fecha_vta, nro_factura, nro_cliente, nombre, forma_pago) VALUES (fecha_minima + CAST("diasV"||' days' AS INTERVAL), r, "nroClienteV", "nombreClienteV", "forma_pagoV");
+		INSERT INTO "SISTEMA-1".venta(fecha_vta, nro_factura, nro_cliente, nombre, forma_pago) VALUES (fecha_maxima + CAST("diasV"||' days' AS INTERVAL), r, "nroClienteV", "nombreClienteV", "forma_pagoV");
 		-- carga detalles venta
 		"cantidadDetalleVentas" := trunc(random() * "cantMaxDV" + minimo);
 		FOR t IN minimo .. "cantidadDetalleVentas" LOOP
@@ -307,7 +307,7 @@ DECLARE
 	"baseCantidadVentas" integer;
 	"limiteCantidadVentas" integer;
 	"forma_pagoMP" varchar(30);
-	"diaMaxV" integer := 365;
+	"diaMaxV" integer := 900;
 	"diasV" integer;
 	"nroClienteV" text;
 	"nombreClienteV" varchar(30);

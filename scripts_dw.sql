@@ -1,7 +1,7 @@
 ﻿CREATE EXTENSION dblink;
 
 SELECT dblink_connect('conect_suc1', 'port=5434 dbname=PatSur-Suc1 user=postgres password=david'); -- david
-SELECT dblink_connect('conect_suc1', 'hostaddr=192.168.1.112 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres'); --lucas
+SELECT dblink_connect('conect_suc1', 'hostaddr=192.168.1.105 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres'); --lucas
 SELECT dblink_connect('conect_suc1', 'hostaddr=192.168.43.243 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres'); --lucas3
 SELECT dblink_connect('conect_suc1', 'hostaddr=10.169.0.97 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres'); --lucas2
 
@@ -168,8 +168,6 @@ CREATE TABLE TIEMPO (
 	CONSTRAINT PK_TIEMPO PRIMARY KEY (Id_Tiempo)
 );
 
-DROP TABLE TIEMPO;
-
 CREATE TABLE PRODUCTOS (
 	Id_Producto int NOT NULL,
 	Id_Categoria text NOT NULL,
@@ -182,8 +180,6 @@ ALTER TABLE PRODUCTOS
 ADD CONSTRAINT FK_CATEGORIA FOREIGN KEY (Id_Categoria,Id_subcategoria)
 REFERENCES CATEGORIA(Id_Categoria,Id_subcategoria);
 
-DROP TABLE PRODUCTOS;
-
 CREATE TABLE CLIENTES (
 	Id_Cliente int NOT NULL,
 	nombre text NOT NULL,
@@ -193,8 +189,6 @@ CREATE TABLE CLIENTES (
 
 ALTER TABLE CLIENTES
 ADD CONSTRAINT FK_TIPO_CLIENTE FOREIGN KEY (Id_Tipo) REFERENCES TIPO_CLIENTE (Id_Tipo);
-
-DROP TABLE CLIENTES;
 
 CREATE TABLE VENTAS (
 	Id_Tiempo int,
@@ -209,8 +203,6 @@ CREATE TABLE VENTAS (
 	--,
 	--CONSTRAINT PK_FACTURA PRIMARY KEY (Id_Factura)
 );
-
-DROP TABLE VENTAS;
 
 CREATE OR REPLACE FUNCTION InsertarTiempo(mesI integer, añoI integer) RETURNS integer AS
 $$
@@ -253,8 +245,6 @@ CREATE TABLE tmpVentas (
 	tipo_cliente int 			--CLIENTE
 );
 
-DROP TABLE tmpVentas;
-
 --Script ETL - extraccion de datos de ventas desde el sistema de facturacion viejo
 CREATE OR REPLACE FUNCTION CargaTmpVentas(pSuc integer, pMes integer, pAño integer) RETURNS VOID AS
 $$
@@ -287,8 +277,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT CargaTmpVentas (3,12,2018);
-
 --Script ETL - extraccion de datos de ventas desde el sistema de facturacion nuevo
 CREATE OR REPLACE FUNCTION CargaTmpVentasSN(pSuc integer, pMes integer, pAño integer) RETURNS VOID AS
 $$
@@ -308,8 +296,29 @@ BEGIN
 	UPDATE tmpventas SET Id_Tiempo = InsertarTiempo(pMes, pAño) WHERE Id_Tiempo IS NULL;
 END;
 $$ LANGUAGE plpgsql;
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-SELECT CargaTmpVentasSN (1,2,2019);
+CREATE OR REPLACE FUNCTION cargagenerica(ainicial integer, afinal integer) RETURNS VOID AS
+$$
+DECLARE
+	i integer; j integer; a record;
+BEGIN
+
+	FOR i IN ainicial .. afinal LOOP
+		FOR j IN 1 .. 12 LOOP
+			SELECT * INTO a FROM (SELECT CargaTmpVentas (1,j,i)) as s;
+			--SELECT * INTO a FROM (SELECT CargaTmpVentasSN (1,j,i)) as s;
+		END LOOP;
+	END LOOP;
+
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT cargagenerica (2010, 2019);
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 -- elimna apelidos de  nombre_cliente
 CREATE OR REPLACE FUNCTION cortarApellidos(nombre text) RETURNS text AS $$
@@ -362,29 +371,6 @@ WHERE tmpv.id_cliente = tec.cns AND tmpv.id_producto = tep.pns
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-SELECT InsertarTiempo(05,2017)
-SELECT * FROM Ventas
-SELECT * FROM Ventas WHERE date_part('year',fecha)=2017
-
-UPDATE Ventas SET id_tiempo=6 WHERE id_factura=621
-
-SELECT * FROM tiempo
 
 
 
-CREATE OR REPLACE FUNCTION cargagenerica(ainicial integer, afinal integer) RETURNS VOID AS
-$$
-DECLARE
-	i integer; j integer; a record;
-BEGIN
-
-	FOR i IN ainicial .. afinal LOOP
-		FOR j IN 1 .. 12 LOOP
-			SELECT * INTO a FROM (SELECT CargaTmpVentas (3,j,i)) as s;
-		END LOOP;
-	END LOOP;
-
-END;
-$$ LANGUAGE plpgsql;
-
-SELECT cargagenerica (2017, 2019);

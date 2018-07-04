@@ -1,7 +1,8 @@
 ﻿--4) Implementar consultas para las vistas que los analistas requirieron
 --	Venta vista por mes o por año, por sucursal, por región, por cliente y demás combinaciones entre las perspectivas.
 
-SELECT T.mes, T.año, S.descripcion, C.descripcion, CL.nombre, sum(monto_venido), sum(V.cantidad_vendida)
+SELECT T.mes, T.año, S.descripcion as sucursal, C.descripcion as ciudad, CL.nombre nombre_cliente, 
+sum(V.monto_vendido) as monto_total_vendido, sum(V.cantidad_vendida) as cant_total_vendida
 FROM ventas V, tiempo T, sucursal S, ciudad C, clientes CL
 WHERE V.id_tiempo = T.id_tiempo and V.id_sucursal = S.id_sucursal
 	and S.id_ciudad = C.id_ciudad and V.id_cliente = CL.id_cliente
@@ -51,17 +52,17 @@ INSERT INTO public.sucursal(id_sucursal, descripcion, id_ciudad) VALUES (3, 'Suc
 SELECT DISTINCT id_sucursal FROM ventas
 
 SELECT * FROM ciudad
-INSERT INTO ciudad VALUES (1, 'Trelew', 1)
-INSERT INTO ciudad VALUES (2, 'Rawson', 1)
-INSERT INTO ciudad VALUES (3, 'La Plata', 2)
+INSERT INTO ciudad VALUES (1, 'Trelew', 1);
+INSERT INTO ciudad VALUES (2, 'Rawson', 1);
+INSERT INTO ciudad VALUES (3, 'La Plata', 2);
 
 SELECT * FROM provincia
-INSERT INTO provincia VALUES (1,'Chubut',1)
-INSERT INTO provincia VALUES (2,'Buenos Aires',2)
+INSERT INTO provincia VALUES (1,'Chubut',1);
+INSERT INTO provincia VALUES (2,'Buenos Aires',2);
 
 SELECT * FROM region
-INSERT INTO region VALUES (1, 'Patagonica')
-INSERT INTO region VALUES (2, 'Centro-Este')
+INSERT INTO region VALUES (1, 'Patagonica');
+INSERT INTO region VALUES (2, 'Centro-Este');
 
 ciudad(id_ciudad,descripcion,id_provincia)
 provincia(id_provincia, descripcion,id_region)
