@@ -91,6 +91,11 @@ descripcion varchar(30) NULL,
 CONSTRAINT PK_COD_TIPO PRIMARY KEY (cod_tipo)
 );
 
+ALTER TABLE "SISTEMA-2".CLIENTES
+ADD CONSTRAINT FK_CLIENTES_TIPO_COD_TIPO FOREIGN KEY(cod_tipo)
+REFERENCES "SISTEMA-2".TIPO_CLIENTE (cod_tipo)
+on delete restrict on update restrict;
+
 -- Producto (cod_Producto, Nombre, cod_categoria, cod_subcategoria, precio_actual)
 CREATE TABLE "SISTEMA-2".PRODUCTO(
 cod_producto text NOT NULL, 
@@ -108,6 +113,11 @@ cod_subcategoria text NOT NULL,
 descripcion varchar(30) NULL, 
 CONSTRAINT PK_COD_CATEGORIA PRIMARY KEY (cod_categoria, cod_subcategoria)
 );
+
+ALTER TABLE "SISTEMA-2".PRODUCTO
+ADD CONSTRAINT FK_PRODUCTO_SUBCATEGORIA_COD_CATEGORIA_SUBCATEGORIA FOREIGN KEY(cod_categoria, cod_subcategoria)
+REFERENCES "SISTEMA-2".CATEGORIA (cod_categoria, cod_subcategoria)
+on delete restrict on update restrict;
 
 -- Venta (Fecha_Vta, Id_Factura, cod_Cliente, Nombre, cod_medio_pago)
 CREATE TABLE "SISTEMA-2".VENTA(
@@ -128,6 +138,16 @@ unidad int NULL,
 precio int NULL
 );
 
+ALTER TABLE "SISTEMA-2".DETALLE_VENTA
+ADD CONSTRAINT FK_DETALLE_VENTA_ID_FACTURA FOREIGN KEY(id_factura)
+REFERENCES "SISTEMA-2".VENTA (id_factura)
+on delete restrict on update restrict;
+
+ALTER TABLE "SISTEMA-2".DETALLE_VENTA
+ADD CONSTRAINT FK_DETALLE_PRODUCTO_COD_PRODUCTO FOREIGN KEY(cod_producto)
+REFERENCES "SISTEMA-2".PRODUCTO (cod_producto)
+on delete restrict on update restrict;
+
 -- Medio_Pago( cod_Medio_Pago, descripción, valor, unidad, tipo_operación)
 CREATE TABLE "SISTEMA-2".MEDIO_PAGO(
 cod_medio_pago int NOT NULL, 
@@ -137,16 +157,6 @@ unidad int NULL,
 tipo_operacion int NULL,
 CONSTRAINT PK_COD_MEDIO_PAGO PRIMARY KEY (cod_medio_pago)
 );
-
-ALTER TABLE "SISTEMA-2".CLIENTES
-ADD CONSTRAINT FK_CLIENTES_TIPO_COD_TIPO FOREIGN KEY(cod_tipo)
-REFERENCES "SISTEMA-2".TIPO_CLIENTE (cod_tipo)
-on delete restrict on update restrict;
-
-ALTER TABLE "SISTEMA-2".PRODUCTO
-ADD CONSTRAINT FK_PRODUCTO_SUBCATEGORIA_COD_CATEGORIA_SUBCATEGORIA FOREIGN KEY(cod_categoria, cod_subcategoria)
-REFERENCES "SISTEMA-2".CATEGORIA (cod_categoria, cod_subcategoria)
-on delete restrict on update restrict;
 
 ALTER TABLE "SISTEMA-2".VENTA
 ADD CONSTRAINT FK_VENTA_CLIENTE_NRO_CLIENTE FOREIGN KEY(cod_cliente)
@@ -158,21 +168,11 @@ ADD CONSTRAINT FK_VENTA_MEDIO_COD_MEDIO_PAGO FOREIGN KEY(cod_medio_pago)
 REFERENCES "SISTEMA-2".MEDIO_PAGO (cod_medio_pago)
 on delete restrict on update restrict;
 
-ALTER TABLE "SISTEMA-2".DETALLE_VENTA
-ADD CONSTRAINT FK_DETALLE_VENTA_ID_FACTURA FOREIGN KEY(id_factura)
-REFERENCES "SISTEMA-2".VENTA (id_factura)
-on delete restrict on update restrict;
-
-ALTER TABLE "SISTEMA-2".DETALLE_VENTA
-ADD CONSTRAINT FK_DETALLE_PRODUCTO_COD_PRODUCTO FOREIGN KEY(cod_producto)
-REFERENCES "SISTEMA-2".PRODUCTO (cod_producto)
-on delete restrict on update restrict;
-
 
 ------------------------------------------------ Punto 2 ------------------------------------------------
 
------------------------------------------ Inserciones Sistema-1 -----------------------------------------
 
+-- Inserciones Sistema-1
 CREATE OR REPLACE FUNCTION "SISTEMA-1"."llenarSistema-1"(cantidad int) RETURNS VOID AS $$
 DECLARE
 	"baseCantidadClientes" integer;
@@ -270,26 +270,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT "SISTEMA-1"."llenarSistema-1"(1000);
+-- SELECT "SISTEMA-1"."llenarSistema-1"(1000);
 
-
-------------------------------------------- funcion hex_to_int -------------------------------------------
-
-
-CREATE OR REPLACE FUNCTION hex_to_int(hexval varchar) RETURNS integer AS $$
-DECLARE
-	result  int;
-BEGIN
-	EXECUTE 'SELECT x''' || hexval || '''::int' INTO result;
-	RETURN result;
-END;
-$$
-LANGUAGE 'plpgsql' IMMUTABLE STRICT; 
-
-
------------------------------------------ Inserciones Sistema-2 -----------------------------------------
-
-
+-- Inserciones Sistema-2
 CREATE OR REPLACE FUNCTION "SISTEMA-2"."llenarSistema-2"(cantidad int) RETURNS VOID AS $$
 DECLARE
 	"baseCantidadClientes" integer;
@@ -417,4 +400,19 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT "SISTEMA-2"."llenarSistema-2"(1000);
+-- SELECT "SISTEMA-2"."llenarSistema-2"(1000);
+
+
+------------------------------------------------- Otros -------------------------------------------------
+
+
+-- Funcion hex_to_int - Pasa numeros hexadecimales a decimales - La usa el scrip de carga del sistema 2 (Sistema nuevo)
+CREATE OR REPLACE FUNCTION hex_to_int(hexval varchar) RETURNS integer AS $$
+DECLARE
+	result  int;
+BEGIN
+	EXECUTE 'SELECT x''' || hexval || '''::int' INTO result;
+	RETURN result;
+END;
+$$
+LANGUAGE 'plpgsql' IMMUTABLE STRICT; 
