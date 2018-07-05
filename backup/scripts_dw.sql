@@ -4,7 +4,8 @@ SELECT dblink_connect('conect_suc1', 'port=5434 dbname=PatSur-Suc1 user=postgres
 SELECT dblink_connect('conect_suc1', 'hostaddr=192.168.1.105 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres'); --lucas
 SELECT dblink_connect('conect_suc1', 'hostaddr=192.168.43.243 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres'); --lucas3
 SELECT dblink_connect('conect_suc1', 'hostaddr=10.169.0.97 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres'); --lucas2
-SELECT dblink_connect('conect_suc1', 'hostaddr=10.2.0.159 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres');
+
+SELECT dblink_disconnect('conect_suc1');
 
 CREATE TABLE TECliente (
 	cdw serial,
@@ -14,7 +15,7 @@ CREATE TABLE TECliente (
 );
 
 --carga tabla de equivalencia de clientes
-CREATE OR REPLACE FUNCTION CargaTEClientes(porcentajeEquivalentes int, suc_db text) RETURNS VOID AS
+CREATE OR REPLACE FUNCTION CargaTEClientes(porcentajeEquivalentes int) RETURNS VOID AS
 $$
 DECLARE
 	clienteSN text;
@@ -23,16 +24,16 @@ DECLARE
 	IDclienteSV integer;
 	totalClientes integer;
 	cantidadEquivalentes  integer;
-	res_conect text;
-	
 BEGIN
-	SELECT dblink_connect('conect_suc', 'hostaddr=10.2.0.159 port=5432 dbname=' || suc_db || ' user=postgres password=postgres') into res_conect;
-	totalClientes := (SELECT * FROM dblink ('conect_suc', 'SELECT COUNT(nro_cliente) FROM "SISTEMA-1".Clientes') AS cn(nro_cliente int)) + 
-			(SELECT * FROM dblink ('conect_suc', 'SELECT COUNT(cod_cliente) FROM "SISTEMA-2".Clientes') AS cn(cod_cliente int)); 
+	totalClientes := (SELECT * FROM dblink ('conect_suc1', 'SELECT COUNT(nro_cliente) FROM "SISTEMA-1".Clientes') AS cn(nro_cliente int)) + 
+			(SELECT * FROM dblink ('conect_suc1', 'SELECT COUNT(cod_cliente) FROM "SISTEMA-2".Clientes') AS cn(cod_cliente int)); 
 	cantidadEquivalentes := (totalClientes *  porcentajeEquivalentes)/100;
-	INSERT INTO TECliente (cvs) SELECT * FROM dblink ('conect_suc', 'SELECT nro_cliente FROM "SISTEMA-1".Clientes') AS cn(nro_cliente int);
-	INSERT INTO TECliente (cns) SELECT * FROM dblink ('conect_suc', 'SELECT cod_cliente FROM "SISTEMA-2".Clientes') AS cn(cod_cliente text);
-
+	INSERT INTO TECliente (cvs)
+	SELECT * FROM dblink ('conect_suc1', 'SELECT nro_cliente
+	FROM "SISTEMA-1".Clientes') AS cn(nro_cliente int);
+	INSERT INTO TECliente (cns)
+	SELECT * FROM dblink ('conect_suc1', 'SELECT cod_cliente
+	FROM "SISTEMA-2".Clientes') AS cn(cod_cliente text);
 	FOR r IN 1 .. cantidadEquivalentes LOOP
 		SELECT cdw FROM tecliente WHERE cns IS NOT NULL ORDER BY random() LIMIT 1 INTO IDclienteSN;
 		SELECT cns FROM tecliente WHERE cdw = IDclienteSN INTO clienteSN;
@@ -40,13 +41,10 @@ BEGIN
 		SELECT cdw FROM tecliente WHERE cns IS NULL ORDER BY random() LIMIT 1 INTO IDclienteSV;
 		UPDATE tecliente SET cns=clienteSN WHERE cdw=IDclienteSV;	
 	END LOOP;
-	SELECT dblink_disconnect('conect_suc') into res_conect;
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT CargaTEClientes(20, 'PatSur-Suc-TW');
-SELECT CargaTEClientes(20, 'PatSur-Suc-RW');
-SELECT CargaTEClientes(20, 'PatSur-Suc-LP');
+SELECT CargaTEClientes(20);
 
 CREATE TABLE TEProductos (
 	pdw serial,
@@ -56,7 +54,7 @@ CREATE TABLE TEProductos (
 );
 
 --carga tabla de equivalencia de productos
-CREATE OR REPLACE FUNCTION CargaTEProductos(porcentajeEquivalentes int, suc_db text) RETURNS VOID AS
+CREATE OR REPLACE FUNCTION CargaTEProductos(porcentajeEquivalentes int) RETURNS VOID AS
 $$
 DECLARE
 	productoSN text;
@@ -65,28 +63,26 @@ DECLARE
 	IDproductoSV integer;
 	totalProductos integer;
 	cantidadEquivalentes  integer;
-	res_conect text;
 BEGIN
-	SELECT dblink_connect('conect_suc', 'hostaddr=10.2.0.159 port=5432 dbname=' || suc_db || ' user=postgres password=postgres') into res_conect;
-	totalProductos := (SELECT * FROM dblink ('conect_suc', 'SELECT COUNT(nro_cliente) FROM "SISTEMA-1".Clientes') AS cn(nro_cliente int)) + 
-			(SELECT * FROM dblink ('conect_suc', 'SELECT COUNT(cod_cliente) FROM "SISTEMA-2".Clientes') AS cn(cod_cliente int)); 
+	totalProductos := (SELECT * FROM dblink ('conect_suc1', 'SELECT COUNT(nro_cliente) FROM "SISTEMA-1".Clientes') AS cn(nro_cliente int)) + 
+			(SELECT * FROM dblink ('conect_suc1', 'SELECT COUNT(cod_cliente) FROM "SISTEMA-2".Clientes') AS cn(cod_cliente int)); 
 	cantidadEquivalentes := (totalProductos *  porcentajeEquivalentes)/100;
 	INSERT INTO teproductos (pvs)
-	SELECT * FROM dblink ('conect_suc', 'SELECT nro_producto FROM "SISTEMA-1".producto') AS cn(nro_producto int);
+	SELECT * FROM dblink ('conect_suc1', 'SELECT nro_producto FROM "SISTEMA-1".producto') AS cn(nro_producto int);
 	INSERT INTO teproductos (pns)
-	SELECT * FROM dblink ('conect_suc', 'SELECT cod_producto FROM "SISTEMA-2".producto') AS cn(cod_producto text);
+	SELECT * FROM dblink ('conect_suc1', 'SELECT cod_producto FROM "SISTEMA-2".producto') AS cn(cod_producto text);
 	FOR r IN 1 .. cantidadEquivalentes LOOP
 		SELECT pdw FROM teproductos WHERE pns IS NOT NULL ORDER BY random() LIMIT 1 INTO IDproductoSN;
 		SELECT pns FROM teproductos WHERE pdw = IDproductoSN INTO productoSN;
 		DELETE FROM teproductos WHERE pdw = IDproductoSN;
 		SELECT pdw FROM teproductos WHERE pns IS NULL ORDER BY random() LIMIT 1 INTO IDproductoSV;
-		UPDATE teproductos SET pns=productoSN WHERE pdw=IDproductoSV;		
+		UPDATE teproductos SET pns=productoSN WHERE pdw=IDproductoSV;
+			
 	END LOOP;
-	SELECT dblink_disconnect('conect_suc') into res_conect;
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT CargaTEProductos(20, 'PatSur-Suc-1');
+SELECT CargaTEProductos(20);
 
 CREATE TABLE MEDIO_PAGO(
 	Id_MedioPago int NOT NULL, 
@@ -95,7 +91,7 @@ CREATE TABLE MEDIO_PAGO(
 );
 
 INSERT INTO MEDIO_PAGO (Id_MedioPago,descripción)
-	SELECT cod_medio_pago,descripción FROM dblink('conect_suc','SELECT cod_medio_pago, descripción FROM "SISTEMA-2".MEDIO_PAGO') AS medio(cod_medio_pago int, descripción varchar(30));
+	SELECT cod_medio_pago,descripción FROM dblink('conect_suc1','SELECT cod_medio_pago, descripción FROM "SISTEMA-2".MEDIO_PAGO') AS medio(cod_medio_pago int, descripción varchar(30));
 
 -- Categoria (cod_categoria,  cod_subcategoría, descripción)
 CREATE TABLE CATEGORIA(
@@ -116,7 +112,7 @@ CREATE TABLE TIPO_CLIENTE(
 );
 
 INSERT INTO TIPO_CLIENTE (Id_Tipo, descripcion)
-	SELECT cod_tipo, descripcion FROM dblink('conect_suc','SELECT cod_tipo, descripcion FROM "SISTEMA-2".TIPO_CLIENTE') AS tipo_cliente(cod_tipo int, descripcion varchar(30));
+	SELECT cod_tipo, descripcion FROM dblink('conect_suc1','SELECT cod_tipo, descripcion FROM "SISTEMA-2".TIPO_CLIENTE') AS tipo_cliente(cod_tipo int, descripcion varchar(30));
 
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -272,9 +268,8 @@ CREATE TABLE tmpVentas (
 CREATE OR REPLACE FUNCTION CargaTmpVentas(pSuc integer, pMes integer, pAño integer) RETURNS VOID AS
 $$
 DECLARE
-	res_conect text;
+	
 BEGIN
-	SELECT dblink_connect('conect_suc', 'hostaddr=10.2.0.159 port=5432 dbname=PatSur-Suc-' || CAST(pSuc as text) || ' user=postgres password=postgres') into res_conect;
 	INSERT INTO tmpVentas(fecha_vta, Id_Factura, Id_Cliente, Id_Producto, Id_Sucursal, Id_medio_pago, monto_vendido, cantidad_vendida, nombre_producto,
 	Id_categoria, nombre_cliente, tipo_cliente)	
 	SELECT fecha_vta, Id_Factura, Id_Cliente, Id_Producto, Id_Sucursal, Id_medio_pago, monto_vendido, cantidad_vendida, nombre_producto, 
@@ -284,7 +279,7 @@ BEGIN
 	(SELECT fecha_vta, Id_Factura, Id_Cliente, Id_Producto, Id_Sucursal, Id_medio_pago, 
 	monto_vendido, cantidad_vendida, nombre_producto, descrip_categ, nombre_cliente, TC.id_tipo AS tipo_cliente
 	FROM 
-	(SELECT * FROM dblink ('conect_suc', 'SELECT fecha_vta, v.nro_factura, CAST (c.nro_cliente as text), CAST (p.nro_producto as text), ' || CAST(pSuc AS text) || 'as Id_Sucursal, 
+	(SELECT * FROM dblink ('conect_suc1', 'SELECT fecha_vta, v.nro_factura, CAST (c.nro_cliente as text), CAST (p.nro_producto as text), ' || CAST(pSuc AS text) || 'as Id_Sucursal, 
 	CASE v.forma_pago WHEN ''contado'' THEN 1 WHEN ''debito'' THEN 2 WHEN ''credito'' THEN 3 WHEN ''transferencia'' THEN 4 END AS Id_medio_pago, 
 	unidad * precio as monto_vendido, unidad as cantidad_vendida, p.nombre, cat.descripcion as descrip_cat, c.nombre, c.tipo
 	FROM "SISTEMA-1".venta v, "SISTEMA-1".detalle_venta dv, "SISTEMA-1".clientes c, "SISTEMA-1".producto p, "SISTEMA-1".categoria cat
@@ -298,7 +293,6 @@ BEGIN
 	INNER JOIN (select descripcion, id_categoria from categoria group by descripcion, id_categoria) AS C ON C.descripcion = TCI.descrip_categ) AS TCII;
 
 	UPDATE tmpventas SET Id_Tiempo = InsertarTiempo(pMes, pAño) WHERE Id_Tiempo IS NULL;
-	SELECT dblink_disconnect('conect_suc') into res_conect;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -306,15 +300,12 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION CargaTmpVentasSN(pSuc integer, pMes integer, pAño integer) RETURNS VOID AS
 $$
 DECLARE
-	res_conect text;
+
 BEGIN	
-
-	SELECT dblink_connect('conect_suc', 'hostaddr=10.2.0.159 port=5432 dbname=PatSur-Suc-' || CAST(pSuc as text) || ' user=postgres password=postgres') into res_conect;
-
 	INSERT INTO tmpventas(fecha_vta, Id_Factura, Id_Cliente, Id_producto, Id_Sucursal, Id_medio_pago, monto_vendido, cantidad_vendida, 
 		nombre_producto, Id_categoria, Id_subcategoria, nombre_cliente, tipo_cliente)
 
-	SELECT * FROM dblink ('conect_suc', 'SELECT fecha_vta, v.id_factura, c.cod_cliente, p.cod_producto, ' || CAST(pSuc AS text) || 'as Id_Sucursal, 
+	SELECT * FROM dblink ('conect_suc1', 'SELECT fecha_vta, v.id_factura, c.cod_cliente, p.cod_producto, ' || CAST(pSuc AS text) || 'as Id_Sucursal, 
 		v.cod_medio_pago, unidad * precio as monto_vendido, unidad as cantidad_vendida,p.nombre, p.cod_categoria, p.cod_subcategoria, c.nombre, c.cod_tipo 
 		FROM "SISTEMA-2".venta v, "SISTEMA-2".detalle_venta dv, "SISTEMA-2".clientes c, "SISTEMA-2".producto p
 		WHERE v.id_factura = dv.id_factura and v.cod_cliente = c.cod_cliente and dv.cod_producto = p.cod_producto and  
@@ -322,7 +313,6 @@ BEGIN
 		AS tmpvent (fecha_vta timestamp, Id_Factura int, Id_Cliente text, Id_Producto text, Id_Sucursal int, Id_medio_pago int, monto_vendido real, 
 		cantidad_vendida real, nombre_producto varchar(30), Id_categoria text, Id_subcategoria text, nombre_cliente varchar(30), tipo_cliente int);
 	UPDATE tmpventas SET Id_Tiempo = InsertarTiempo(pMes, pAño) WHERE Id_Tiempo IS NULL;
-	SELECT dblink_disconnect('conect_suc') into res_conect;
 END;
 $$ LANGUAGE plpgsql;
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -359,68 +349,47 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql; 
 
+--ingreso de clientes del viejo sistema desde tmpVentas
+INSERT INTO Clientes
+	SELECT DISTINCT cdw, cortarApellidos(nombre_cliente), tipo_cliente
+	FROM tmpVentas tmpv, TECliente tec
+	WHERE tmpv.id_cliente = CAST (tec.cvs as text) AND tec.cdw not in (SELECT id_cliente from Clientes)
 
-CREATE OR REPLACE FUNCTION Carga_CPV() RETURNS VOID AS
-$$
-DECLARE
+--ingreso de clientes del nuevo sistema desde tmpVentas
+INSERT INTO Clientes
+	SELECT DISTINCT cdw, cortarApellidos(nombre_cliente), tipo_cliente
+	FROM tmpVentas tmpv, TECliente tec
+	WHERE tmpv.id_cliente = tec.cns AND tec.cdw not in (SELECT id_cliente from Clientes)
 
-BEGIN	
-	--ingreso de clientes del viejo sistema desde tmpVentas
-	INSERT INTO Clientes
-		SELECT DISTINCT cdw, cortarApellidos(nombre_cliente), tipo_cliente
-		FROM tmpVentas tmpv, TECliente tec
-		WHERE tmpv.id_cliente = CAST (tec.cvs as text) AND tec.cdw not in (SELECT id_cliente from Clientes);
+--ingreso de productos del viejo sistema desde tmpVentas
+INSERT INTO Productos
+	SELECT DISTINCT pdw, id_categoria, 'aab', nombre_producto
+	FROM tmpVentas tmpv, TEProductos tep
+	WHERE tmpv.id_producto = CAST (tep.pvs as text) and tep.pdw not in (SELECT id_producto from Productos)
 
-	--ingreso de clientes del nuevo sistema desde tmpVentas
-	INSERT INTO Clientes
-		SELECT DISTINCT cdw, cortarApellidos(nombre_cliente), tipo_cliente
-		FROM tmpVentas tmpv, TECliente tec
-		WHERE tmpv.id_cliente = tec.cns AND tec.cdw not in (SELECT id_cliente from Clientes);
+--ingreso de productos del nuevo sistema desde tmpVentas
+INSERT INTO Productos
+	SELECT DISTINCT pdw, id_categoria, id_subcategoria, nombre_producto
+	FROM tmpVentas tmpv, TEProductos tep
+	WHERE tmpv.id_producto = tep.pns and tep.pdw not in (SELECT id_producto from Productos)
 
-	--ingreso de productos del viejo sistema desde tmpVentas
-	INSERT INTO Productos
-		SELECT DISTINCT pdw, id_categoria, 'aab', nombre_producto 				--COMPLETAR LA SUBCATEGORIA
-		FROM tmpVentas tmpv, TEProductos tep
-		WHERE tmpv.id_producto = CAST (tep.pvs as text) and tep.pdw not in (SELECT id_producto from Productos);
+--ingreso de ventas del viejo sistema desde tmpVentas
+INSERT INTO Ventas
+SELECT id_tiempo, fecha_vta, id_factura, cdw, pdw, id_sucursal, id_medio_pago, monto_vendido, cantidad_vendida
+FROM tmpVentas tmpv, TECliente tec, TEProductos tep
+WHERE tmpv.id_cliente = CAST (tec.cvs as text) AND tmpv.id_producto = CAST (tep.pvs as text)
 
-	--ingreso de productos del nuevo sistema desde tmpVentas
-	INSERT INTO Productos
-		SELECT DISTINCT pdw, id_categoria, id_subcategoria, nombre_producto
-		FROM tmpVentas tmpv, TEProductos tep
-		WHERE tmpv.id_producto = tep.pns and tep.pdw not in (SELECT id_producto from Productos);
+--ingreso de ventas del nuevo sistema desde tmpVentas
+INSERT INTO Ventas
+SELECT id_tiempo, fecha_vta, id_factura, cdw, pdw, id_sucursal, id_medio_pago, monto_vendido, cantidad_vendida
+FROM tmpVentas tmpv, TECliente tec, TEProductos tep
+WHERE tmpv.id_cliente = tec.cns AND tmpv.id_producto = tep.pns
 
-	--ingreso de ventas del viejo sistema desde tmpVentas
-	INSERT INTO Ventas
-	SELECT id_tiempo, fecha_vta, id_factura, cdw, pdw, id_sucursal, id_medio_pago, monto_vendido, cantidad_vendida
-	FROM tmpVentas tmpv, TECliente tec, TEProductos tep
-	WHERE tmpv.id_cliente = CAST (tec.cvs as text) AND tmpv.id_producto = CAST (tep.pvs as text);
 
-	--ingreso de ventas del nuevo sistema desde tmpVentas
-	INSERT INTO Ventas
-	SELECT id_tiempo, fecha_vta, id_factura, cdw, pdw, id_sucursal, id_medio_pago, monto_vendido, cantidad_vendida
-	FROM tmpVentas tmpv, TECliente tec, TEProductos tep
-	WHERE tmpv.id_cliente = tec.cns AND tmpv.id_producto = tep.pns;
-
-END;
-$$ LANGUAGE plpgsql; 
-
-SELECT Carga_CPV();
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION Carga_General() RETURNS VOID AS
-$$
-DECLARE
-
-BEGIN	
-
-	SELECT  CargaTmpVentas(1, 2, 2014)
-	SELECT  CargaTmpVentasSN(1, 8, 2016);	
-	SELECT Carga_CPV();
 
 
-
-END;
-$$ LANGUAGE plpgsql; 
