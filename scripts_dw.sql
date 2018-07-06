@@ -6,7 +6,7 @@
 CREATE EXTENSION dblink;
 
 SELECT dblink_connect('conect_suc1', 'port=5434 dbname=PatSur-Suc1 user=postgres password=david'); -- david
-SELECT dblink_connect('conect_suc1', 'hostaddr=192.168.1.105 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres'); --lucas
+SELECT dblink_connect('conect_suc', 'hostaddr=192.168.1.105  port=5432 dbname=PatSur-Suc-1 user=postgres password=postgres'); --lucas
 SELECT dblink_connect('conect_suc1', 'hostaddr=192.168.43.243 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres'); --lucas3
 SELECT dblink_connect('conect_suc1', 'hostaddr=10.169.0.97 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres'); --lucas2
 SELECT dblink_connect('conect_suc1', 'hostaddr=10.2.0.159 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres');
@@ -160,7 +160,7 @@ CREATE TABLE TECliente (
 	cns text DEFAULT NULL,
 	CONSTRAINT pk_tecliente PRIMARY KEY (cdw)
 );
-
+--DROP TABLE TECliente;
 -- TABLA DE EQUIVALENCIA DE PRODUCTOS
 CREATE TABLE TEProductos (
 	pdw serial,
@@ -202,26 +202,37 @@ DECLARE
 	totalClientes integer;
 	cantidadEquivalentes  integer;
 	res_conect text;
+	cdw_ini integer;
+	cdw_tmp integer;
 	
 BEGIN
-	SELECT dblink_connect('conect_suc', 'hostaddr=10.2.0.159 port=5432 dbname=' || suc_db || ' user=postgres password=postgres') into res_conect;
-	totalClientes := (SELECT * FROM dblink ('conect_suc', 'SELECT COUNT(nro_cliente) FROM "SISTEMA-1".Clientes') AS cn(nro_cliente int)) + 
-			(SELECT * FROM dblink ('conect_suc', 'SELECT COUNT(cod_cliente) FROM "SISTEMA-2".Clientes') AS cn(cod_cliente int)); 
+	SELECT dblink_connect('conect_suc', 'hostaddr=192.168.1.105 port=5432 dbname=' || suc_db || ' user=postgres password=postgres') into res_conect;
+	cdw_ini := (SELECT max(cdw) FROM TECliente);
+	RAISE NOTICE 'CANTIDAD INICIAL %', cdw_ini;
+	RAISE NOTICE 'CANTIDAD INICIAL %', cdw_ini;
+	IF cdw_ini IS NULL THEN
+		cdw_ini := 0;
+	END IF;
+
+	INSERT INTO TECliente (cvs) SELECT * FROM dblink ('conect_suc', 'SELECT nro_cliente FROM "SISTEMA-1".Clientes') AS cn(nro_cliente int) WHERE cn.nro_cliente not in (SELECT cvs FROM TECliente WHERE cvs IS NOT NULL) ;
+	INSERT INTO TECliente (cns) SELECT * FROM dblink ('conect_suc', 'SELECT cod_cliente FROM "SISTEMA-2".Clientes') AS cn(cod_cliente text) WHERE cn.cod_cliente not in (SELECT cns FROM TECliente WHERE cns IS NOT NULL);
+
+	totalClientes := (SELECT max(cdw) FROM TECliente) - cdw_ini;
 	cantidadEquivalentes := (totalClientes *  porcentajeEquivalentes)/100;
-	INSERT INTO TECliente (cvs) SELECT * FROM dblink ('conect_suc', 'SELECT nro_cliente FROM "SISTEMA-1".Clientes') AS cn(nro_cliente int);
-	INSERT INTO TECliente (cns) SELECT * FROM dblink ('conect_suc', 'SELECT cod_cliente FROM "SISTEMA-2".Clientes') AS cn(cod_cliente text);
+
 	FOR r IN 1 .. cantidadEquivalentes LOOP
-		SELECT cdw FROM tecliente WHERE cns IS NOT NULL ORDER BY random() LIMIT 1 INTO IDclienteSN;
+		SELECT cdw FROM tecliente WHERE (cdw>cdw_ini and cns IS NOT NULL and cvs IS NULL) ORDER BY random() LIMIT 1 INTO IDclienteSN;
 		SELECT cns FROM tecliente WHERE cdw = IDclienteSN INTO clienteSN;
 		DELETE FROM tecliente WHERE cdw = IDclienteSN;
-		SELECT cdw FROM tecliente WHERE cns IS NULL ORDER BY random() LIMIT 1 INTO IDclienteSV;
+		SELECT cdw FROM tecliente WHERE (cdw>cdw_ini and cns IS NULL and cvs IS NOT NULL) ORDER BY random() LIMIT 1 INTO IDclienteSV;
 		UPDATE tecliente SET cns=clienteSN WHERE cdw=IDclienteSV;	
 	END LOOP;
+	
 	SELECT dblink_disconnect('conect_suc') into res_conect;
 END;
 $$ LANGUAGE plpgsql;
 
--- SELECT CargaTEClientes(20, 'PatSur-Suc-1');
+SELECT CargaTEClientes(25, 'PatSur-Suc-1');
 -- SELECT CargaTEClientes(20, 'PatSur-Suc-2');
 -- SELECT CargaTEClientes(20, 'PatSur-Suc-3');
 
@@ -256,7 +267,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- SELECT CargaTEProductos(20, 'PatSur-Suc-1');
+SELECT CargaTEProductos(20, 'PatSur-Suc-1');
 
 -- Script ETL - Extraccion de datos de ventas desde el sistema de facturacion viejo
 CREATE OR REPLACE FUNCTION CargaTmpVentas(pSuc integer, pMes integer, pAño integer) RETURNS VOID AS
@@ -363,7 +374,7 @@ $$
 DECLARE
 
 BEGIN	
-	SELECT  CargaTmpVentas(pSuc, pMes, pAño)
+	SELECT  CargaTmpVentas(pSuc, pMes, pAño);
 	SELECT  CargaTmpVentasSN(pSuc, pMes, pAño);	
 	SELECT Carga_CPV();
 															-- FALTA LIMPIAR O ELIMINAR TMPVENTAS
