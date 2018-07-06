@@ -111,6 +111,7 @@ CREATE TABLE TIEMPO (
 	trimetres int NOT NULL,
 	CONSTRAINT PK_TIEMPO PRIMARY KEY (Id_Tiempo)
 );
+--DROP TABLE TIEMPO;
 
 -- TABLA PRODUCTOS
 CREATE TABLE PRODUCTOS (
@@ -120,7 +121,7 @@ CREATE TABLE PRODUCTOS (
 	nombre varchar(30) NOT NULL,
 	CONSTRAINT PK_PRODUCTOS PRIMARY KEY (Id_Producto)
 );
-
+--DROP TABLE PRODUCTOS
 ALTER TABLE PRODUCTOS
 ADD CONSTRAINT FK_CATEGORIA FOREIGN KEY (Id_Categoria,Id_subcategoria)
 REFERENCES CATEGORIA(Id_Categoria,Id_subcategoria);
@@ -132,7 +133,7 @@ CREATE TABLE CLIENTES (
 	Id_Tipo int NOT NULL,
 	CONSTRAINT PK_CLIENTES PRIMARY KEY (Id_Cliente)
 );
-
+--DROP TABLE CLIENTES
 ALTER TABLE CLIENTES
 ADD CONSTRAINT FK_TIPO_CLIENTE FOREIGN KEY (Id_Tipo) REFERENCES TIPO_CLIENTE (Id_Tipo);
 
@@ -148,7 +149,7 @@ CREATE TABLE VENTAS (
 	monto_vendido real,
 	cantidad_vendida int
 );
-
+--DROP TABLE VENTAS
 
 -------------------------------------- Implementación ETL ----------------------------------------------
 
@@ -186,7 +187,7 @@ CREATE TABLE tmpVentas (
 	nombre_cliente varchar(30),		
 	tipo_cliente int 			
 );
-
+--DROP TABLE tmpVentas
 
 -------------------------------- Scripts de carga ETL ------------------------------------
 
@@ -232,8 +233,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 SELECT CargaTEClientes(25, 'PatSur-Suc-1');
--- SELECT CargaTEClientes(20, 'PatSur-Suc-2');
--- SELECT CargaTEClientes(20, 'PatSur-Suc-3');
+SELECT CargaTEClientes(20, 'PatSur-Suc-2');
+SELECT CargaTEClientes(20, 'PatSur-Suc-3');
 
 -- Script ETL - Carga tabla de equivalencia de productos
 CREATE OR REPLACE FUNCTION CargaTEProductos(porcentajeEquivalentes int, suc_db text) RETURNS VOID AS
@@ -278,6 +279,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 SELECT CargaTEProductos(20, 'PatSur-Suc-1');
+--SELECT CargaTEProductos(20, 'PatSur-Suc-2');
+--SELECT CargaTEProductos(20, 'PatSur-Suc-3');
 
 -- Script ETL - Extraccion de datos de ventas desde el sistema de facturacion viejo
 CREATE OR REPLACE FUNCTION CargaTmpVentas(pSuc integer, pMes integer, pAño integer) RETURNS VOID AS
@@ -285,7 +288,7 @@ $$
 DECLARE
 	res_conect text;
 BEGIN
-	SELECT dblink_connect('conect_suc', 'hostaddr=10.2.0.159 port=5432 dbname=PatSur-Suc-' || CAST(pSuc as text) || ' user=postgres password=postgres') into res_conect;
+	SELECT dblink_connect('conect_suc', 'hostaddr=192.168.1.105 port=5432 dbname=PatSur-Suc-' || CAST(pSuc as text) || ' user=postgres password=postgres') into res_conect;
 	INSERT INTO tmpVentas(fecha_vta, Id_Factura, Id_Cliente, Id_Producto, Id_Sucursal, Id_medio_pago, monto_vendido, cantidad_vendida, nombre_producto,
 	Id_categoria, nombre_cliente, tipo_cliente)	
 	SELECT fecha_vta, Id_Factura, Id_Cliente, Id_Producto, Id_Sucursal, Id_medio_pago, monto_vendido, cantidad_vendida, nombre_producto, 
@@ -320,7 +323,7 @@ DECLARE
 	res_conect text;
 BEGIN	
 
-	SELECT dblink_connect('conect_suc', 'hostaddr=10.2.0.159 port=5432 dbname=PatSur-Suc-' || CAST(pSuc as text) || ' user=postgres password=postgres') into res_conect;
+	SELECT dblink_connect('conect_suc', 'hostaddr=192.168.1.105 port=5432 dbname=PatSur-Suc-' || CAST(pSuc as text) || ' user=postgres password=postgres') into res_conect;
 
 	INSERT INTO tmpventas(fecha_vta, Id_Factura, Id_Cliente, Id_producto, Id_Sucursal, Id_medio_pago, monto_vendido, cantidad_vendida, 
 		nombre_producto, Id_categoria, Id_subcategoria, nombre_cliente, tipo_cliente)
@@ -382,11 +385,11 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION Carga_Particular(pSuc integer, pMes integer, pAño integer) RETURNS VOID AS
 $$
 DECLARE
-
+	a record;
 BEGIN	
-	SELECT  CargaTmpVentas(pSuc, pMes, pAño);
-	SELECT  CargaTmpVentasSN(pSuc, pMes, pAño);	
-	SELECT Carga_CPV();
+	SELECT CargaTmpVentas(pSuc, pMes, pAño) into a;
+	SELECT CargaTmpVentasSN(pSuc, pMes, pAño) into a;	
+	SELECT Carga_CPV() into a;
 															-- FALTA LIMPIAR O ELIMINAR TMPVENTAS
 END;
 $$ LANGUAGE plpgsql;
@@ -397,9 +400,11 @@ $$
 DECLARE
 	i integer; j integer; a record;
 BEGIN
-	FOR i IN ainicial .. afinal LOOP
-		FOR j IN 1 .. 12 LOOP
-			SELECT * INTO a FROM (SELECT Carga_Particular(1,j,i)) as s;
+	FOR k IN 1 .. 3 LOOP
+		FOR i IN ainicial .. afinal LOOP
+			FOR j IN 1 .. 12 LOOP
+				SELECT * INTO a FROM (SELECT Carga_Particular(k,j,i)) as s;
+			END LOOP;
 		END LOOP;
 	END LOOP;
 END;
