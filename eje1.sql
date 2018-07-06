@@ -196,7 +196,7 @@ DECLARE
 	"nroProductoDV" integer;
 	"nombreProductoDV" varchar(30);
 	"cantidadDetalleVentas" integer;
-	"cantMaxDV" integer := 15;
+	"cantMaxDV" integer := 5;
 	"unidadDV" integer;
 	"unidadMaxDV" integer := 100;
 	"precioDV" integer;
@@ -272,7 +272,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- SELECT "SISTEMA-1"."llenarSistema-1"(1000);
+-- SELECT "SISTEMA-1"."llenarSistema-1"(300);
 
 -- Inserciones Sistema-2
 CREATE OR REPLACE FUNCTION "SISTEMA-2"."llenarSistema-2"(cantidad int) RETURNS VOID AS $$
@@ -299,7 +299,7 @@ DECLARE
 	"nroProductoDV" text;
 	"nombreProductoDV" varchar(30);
 	"cantidadDetalleVentas" integer;
-	"cantMaxDV" integer := 15;
+	"cantMaxDV" integer := 5;
 	"unidadDV" integer;
 	"unidadMaxDV" integer := 100;
 	"precioDV" integer;
@@ -404,7 +404,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- SELECT "SISTEMA-2"."llenarSistema-2"(1000);
+-- SELECT "SISTEMA-2"."llenarSistema-2"(300);
 
 
 ------------------------------------------------- Otros -------------------------------------------------
