@@ -5,12 +5,6 @@
 
 CREATE EXTENSION dblink;
 
-SELECT dblink_connect('conect_suc1', 'port=5434 dbname=PatSur-Suc1 user=postgres password=david'); -- david
-SELECT dblink_connect('conect_suc', 'hostaddr=192.168.1.105  port=5432 dbname=PatSur-Suc-1 user=postgres password=postgres'); --lucas
-SELECT dblink_connect('conect_suc1', 'hostaddr=192.168.43.243 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres'); --lucas3
-SELECT dblink_connect('conect_suc1', 'hostaddr=10.169.0.97 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres'); --lucas2
-SELECT dblink_connect('conect_suc1', 'hostaddr=10.2.0.159 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres');
-
 -- Medio_pago (Id_MedioPago, descripción)
 CREATE TABLE MEDIO_PAGO(
 	Id_MedioPago int NOT NULL, 
@@ -34,15 +28,33 @@ CREATE TABLE TIPO_CLIENTE(
 );
 
 -- Carga de tablas que no utilizan tablas de equivalencia (Esto es una simplificación)
+SELECT dblink_connect('conect_suc1', 'port=5434 dbname=PatSur-Suc-1 user=postgres password=david'); -- david
+SELECT dblink_connect('conect_suc2', 'port=5434 dbname=PatSur-Suc-2 user=postgres password=david'); -- david
+SELECT dblink_connect('conect_suc3', 'port=5434 dbname=PatSur-Suc-3 user=postgres password=david'); -- david
+-- SELECT dblink_connect('conect_suc', 'hostaddr=192.168.1.105  port=5432 dbname=PatSur-Suc-1 user=postgres password=postgres'); --lucas
+-- SELECT dblink_connect('conect_suc1', 'hostaddr=192.168.43.243 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres'); --lucas3
+-- SELECT dblink_connect('conect_suc1', 'hostaddr=10.169.0.97 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres'); --lucas2
+-- SELECT dblink_connect('conect_suc1', 'hostaddr=10.2.0.159 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres');
 INSERT INTO MEDIO_PAGO (Id_MedioPago,descripción)
 	SELECT cod_medio_pago,descripción 
-	FROM dblink('conect_suc','SELECT cod_medio_pago, descripción FROM "SISTEMA-2".MEDIO_PAGO') AS medio(cod_medio_pago int, descripción varchar(30));
+	FROM dblink('conect_suc1','SELECT cod_medio_pago, descripción FROM "SISTEMA-2".MEDIO_PAGO') AS medio(cod_medio_pago int, descripción varchar(30));
 INSERT INTO CATEGORIA (Id_Categoria, Id_subcategoria, descripcion)
-	SELECT cod_categoria, cod_subcategoria, descripcion 
-	FROM dblink('conect_suc1','SELECT cod_categoria, cod_subcategoria, descripcion FROM "SISTEMA-2".CATEGORIA') AS categoria(cod_categoria text, cod_subcategoria text, descripcion varchar(30));
+	SELECT DISTINCT cod_categoria, cod_subcategoria, descripcion FROM
+	((SELECT cod_categoria, cod_subcategoria, descripcion 
+	FROM dblink('conect_suc1','SELECT cod_categoria, cod_subcategoria, descripcion FROM "SISTEMA-2".CATEGORIA') AS categoria(cod_categoria text, cod_subcategoria text, descripcion varchar(30)))
+	UNION ALL
+	(SELECT cod_categoria, cod_subcategoria, descripcion 
+	FROM dblink('conect_suc2','SELECT cod_categoria, cod_subcategoria, descripcion FROM "SISTEMA-2".CATEGORIA') AS categoria(cod_categoria text, cod_subcategoria text, descripcion varchar(30))) 
+	UNION ALL
+	(SELECT cod_categoria, cod_subcategoria, descripcion 
+	FROM dblink('conect_suc3','SELECT cod_categoria, cod_subcategoria, descripcion FROM "SISTEMA-2".CATEGORIA') AS categoria(cod_categoria text, cod_subcategoria text, descripcion varchar(30)))
+	) AS f;
 INSERT INTO TIPO_CLIENTE (Id_Tipo, descripcion)
 	SELECT cod_tipo, descripcion 
-	FROM dblink('conect_suc','SELECT cod_tipo, descripcion FROM "SISTEMA-2".TIPO_CLIENTE') AS tipo_cliente(cod_tipo int, descripcion varchar(30));
+	FROM dblink('conect_suc1','SELECT cod_tipo, descripcion FROM "SISTEMA-2".TIPO_CLIENTE') AS tipo_cliente(cod_tipo int, descripcion varchar(30));
+SELECT dblink_disconnect('conect_suc1');
+SELECT dblink_disconnect('conect_suc2');
+SELECT dblink_disconnect('conect_suc3');
 
 -- TABLA SUCURSAL
 CREATE TABLE SUCURSAL (
@@ -102,7 +114,6 @@ INSERT INTO public.sucursal(id_sucursal, descripcion, id_ciudad) VALUES (1, 'Suc
 INSERT INTO public.sucursal(id_sucursal, descripcion, id_ciudad) VALUES (2, 'Sucursal 2', 2);
 INSERT INTO public.sucursal(id_sucursal, descripcion, id_ciudad) VALUES (3, 'Sucursal 3', 3);
 
-
 -- TABLA TIEMPO
 CREATE TABLE TIEMPO (
 	Id_Tiempo serial,
@@ -111,7 +122,6 @@ CREATE TABLE TIEMPO (
 	trimetres int NOT NULL,
 	CONSTRAINT PK_TIEMPO PRIMARY KEY (Id_Tiempo)
 );
---DROP TABLE TIEMPO;
 
 -- TABLA PRODUCTOS
 CREATE TABLE PRODUCTOS (
@@ -121,7 +131,7 @@ CREATE TABLE PRODUCTOS (
 	nombre varchar(30) NOT NULL,
 	CONSTRAINT PK_PRODUCTOS PRIMARY KEY (Id_Producto)
 );
---DROP TABLE PRODUCTOS
+
 ALTER TABLE PRODUCTOS
 ADD CONSTRAINT FK_CATEGORIA FOREIGN KEY (Id_Categoria,Id_subcategoria)
 REFERENCES CATEGORIA(Id_Categoria,Id_subcategoria);
@@ -206,20 +216,15 @@ DECLARE
 	cdw_ini integer;
 	
 BEGIN
-	SELECT dblink_connect('conect_suc', 'hostaddr=192.168.1.105 port=5432 dbname=' || suc_db || ' user=postgres password=postgres') into res_conect;
+	SELECT dblink_connect('conect_suc', 'port=5434 dbname=' || suc_db || ' user=postgres password=david') into res_conect;
 	cdw_ini := (SELECT max(cdw) FROM TECliente);
-	--RAISE NOTICE 'CANTIDAD INICIAL %', cdw_ini;
-	
 	IF cdw_ini IS NULL THEN
 		cdw_ini := 0;
 	END IF;
-
 	INSERT INTO TECliente (cvs) SELECT * FROM dblink ('conect_suc', 'SELECT nro_cliente FROM "SISTEMA-1".Clientes') AS cn(nro_cliente int) WHERE cn.nro_cliente not in (SELECT cvs FROM TECliente WHERE cvs IS NOT NULL) ;
 	INSERT INTO TECliente (cns) SELECT * FROM dblink ('conect_suc', 'SELECT cod_cliente FROM "SISTEMA-2".Clientes') AS cn(cod_cliente text) WHERE cn.cod_cliente not in (SELECT cns FROM TECliente WHERE cns IS NOT NULL);
-
 	totalClientes := (SELECT max(cdw) FROM TECliente) - cdw_ini;
 	cantidadEquivalentes := (totalClientes *  porcentajeEquivalentes)/100;
-
 	FOR r IN 1 .. cantidadEquivalentes LOOP
 		SELECT cdw FROM tecliente WHERE (cdw>cdw_ini and cns IS NOT NULL and cvs IS NULL) ORDER BY random() LIMIT 1 INTO IDclienteSN;
 		SELECT cns FROM tecliente WHERE cdw = IDclienteSN INTO clienteSN;
@@ -227,14 +232,13 @@ BEGIN
 		SELECT cdw FROM tecliente WHERE (cdw>cdw_ini and cns IS NULL and cvs IS NOT NULL) ORDER BY random() LIMIT 1 INTO IDclienteSV;
 		UPDATE tecliente SET cns=clienteSN WHERE cdw=IDclienteSV;	
 	END LOOP;
-	
 	SELECT dblink_disconnect('conect_suc') into res_conect;
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT CargaTEClientes(25, 'PatSur-Suc-1');
-SELECT CargaTEClientes(20, 'PatSur-Suc-2');
-SELECT CargaTEClientes(20, 'PatSur-Suc-3');
+-- SELECT CargaTEClientes(25, 'PatSur-Suc-1');
+-- SELECT CargaTEClientes(20, 'PatSur-Suc-2');
+-- SELECT CargaTEClientes(10, 'PatSur-Suc-3');
 
 -- Script ETL - Carga tabla de equivalencia de productos
 CREATE OR REPLACE FUNCTION CargaTEProductos(porcentajeEquivalentes int, suc_db text) RETURNS VOID AS
@@ -250,23 +254,17 @@ DECLARE
 	pdw_ini integer;
 	
 BEGIN
-	SELECT dblink_connect('conect_suc', 'hostaddr=192.168.1.105 port=5432 dbname=' || suc_db || ' user=postgres password=postgres') into res_conect;
-
+	SELECT dblink_connect('conect_suc', 'port=5434 dbname=' || suc_db || ' user=postgres password=david') into res_conect;
 	pdw_ini := (SELECT max(pdw) FROM TEProductos);
-	--RAISE NOTICE 'CANTIDAD INICIAL %', pdw_ini;
-	
 	IF pdw_ini IS NULL THEN
 		pdw_ini := 0;
 	END IF;	
-	
 	INSERT INTO teproductos (pvs)
 	SELECT * FROM dblink ('conect_suc', 'SELECT nro_producto FROM "SISTEMA-1".producto') AS cn(nro_producto int) WHERE cn.nro_producto not in (SELECT pvs FROM TEProductos WHERE pvs IS NOT NULL);
 	INSERT INTO teproductos (pns)
 	SELECT * FROM dblink ('conect_suc', 'SELECT cod_producto FROM "SISTEMA-2".producto') AS cn(cod_producto text) WHERE cn.cod_producto not in (SELECT pns FROM TEProductos WHERE pns IS NOT NULL);
-
 	totalProductos := (SELECT max(pdw) FROM TEProductos) - pdw_ini;
 	cantidadEquivalentes := (totalProductos *  porcentajeEquivalentes)/100;
-
 	FOR r IN 1 .. cantidadEquivalentes LOOP
 		SELECT pdw FROM teproductos WHERE (pdw>pdw_ini and pns IS NOT NULL and pvs IS NULL) ORDER BY random() LIMIT 1 INTO IDproductoSN;
 		SELECT pns FROM teproductos WHERE pdw = IDproductoSN INTO productoSN;
@@ -278,9 +276,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT CargaTEProductos(20, 'PatSur-Suc-1');
---SELECT CargaTEProductos(20, 'PatSur-Suc-2');
---SELECT CargaTEProductos(20, 'PatSur-Suc-3');
+-- SELECT CargaTEProductos(30, 'PatSur-Suc-1');
+-- SELECT CargaTEProductos(10, 'PatSur-Suc-2');
+-- SELECT CargaTEProductos(20, 'PatSur-Suc-3');
 
 -- Script ETL - Extraccion de datos de ventas desde el sistema de facturacion viejo
 CREATE OR REPLACE FUNCTION CargaTmpVentas(pSuc integer, pMes integer, pAño integer) RETURNS VOID AS
@@ -288,7 +286,7 @@ $$
 DECLARE
 	res_conect text;
 BEGIN
-	SELECT dblink_connect('conect_suc', 'hostaddr=192.168.1.105 port=5432 dbname=PatSur-Suc-' || CAST(pSuc as text) || ' user=postgres password=postgres') into res_conect;
+	SELECT dblink_connect('conect_suc', 'port=5434 dbname=PatSur-Suc-' || CAST(pSuc as text) || ' user=postgres password=david') into res_conect;
 	INSERT INTO tmpVentas(fecha_vta, Id_Factura, Id_Cliente, Id_Producto, Id_Sucursal, Id_medio_pago, monto_vendido, cantidad_vendida, nombre_producto,
 	Id_categoria, nombre_cliente, tipo_cliente)	
 	SELECT fecha_vta, Id_Factura, Id_Cliente, Id_Producto, Id_Sucursal, Id_medio_pago, monto_vendido, cantidad_vendida, nombre_producto, 
@@ -310,8 +308,8 @@ BEGIN
 	INNER JOIN tipo_cliente AS TC ON (I.tipo_cliente = TC.descripcion))
 	AS TCI 
 	INNER JOIN (select descripcion, id_categoria from categoria group by descripcion, id_categoria) AS C ON C.descripcion = TCI.descrip_categ) AS TCII;
-
 	UPDATE tmpventas SET Id_Tiempo = InsertarTiempo(pMes, pAño) WHERE Id_Tiempo IS NULL;
+	UPDATE tmpventas SET id_subcategoria = (SELECT MAX(cat.id_subcategoria) FROM categoria as cat where cat.id_categoria = tmpventas.id_categoria ) WHERE id_subcategoria IS NULL;
 	SELECT dblink_disconnect('conect_suc') into res_conect;
 END;
 $$ LANGUAGE plpgsql;
@@ -323,11 +321,9 @@ DECLARE
 	res_conect text;
 BEGIN	
 
-	SELECT dblink_connect('conect_suc', 'hostaddr=192.168.1.105 port=5432 dbname=PatSur-Suc-' || CAST(pSuc as text) || ' user=postgres password=postgres') into res_conect;
-
+	SELECT dblink_connect('conect_suc', 'port=5434 dbname=PatSur-Suc-' || CAST(pSuc as text) || ' user=postgres password=david') into res_conect;
 	INSERT INTO tmpventas(fecha_vta, Id_Factura, Id_Cliente, Id_producto, Id_Sucursal, Id_medio_pago, monto_vendido, cantidad_vendida, 
 		nombre_producto, Id_categoria, Id_subcategoria, nombre_cliente, tipo_cliente)
-
 	SELECT * FROM dblink ('conect_suc', 'SELECT fecha_vta, v.id_factura, c.cod_cliente, p.cod_producto, ' || CAST(pSuc AS text) || 'as Id_Sucursal, 
 		v.cod_medio_pago, unidad * precio as monto_vendido, unidad as cantidad_vendida,p.nombre, p.cod_categoria, p.cod_subcategoria, c.nombre, c.cod_tipo 
 		FROM "SISTEMA-2".venta v, "SISTEMA-2".detalle_venta dv, "SISTEMA-2".clientes c, "SISTEMA-2".producto p
@@ -358,7 +354,7 @@ BEGIN
 		WHERE tmpv.id_cliente = tec.cns AND tec.cdw not in (SELECT id_cliente from Clientes);
 	--ingreso de productos del viejo sistema desde tmpVentas
 	INSERT INTO Productos
-		SELECT DISTINCT pdw, id_categoria, 'aab', nombre_producto 							--COMPLETAR LA SUBCATEGORIA
+		SELECT DISTINCT pdw, id_categoria, id_subcategoria, nombre_producto 
 		FROM tmpVentas tmpv, TEProductos tep
 		WHERE tmpv.id_producto = CAST (tep.pvs as text) and tep.pdw not in (SELECT id_producto from Productos);
 	--ingreso de productos del nuevo sistema desde tmpVentas
@@ -390,7 +386,7 @@ BEGIN
 	SELECT CargaTmpVentas(pSuc, pMes, pAño) into a;
 	SELECT CargaTmpVentasSN(pSuc, pMes, pAño) into a;	
 	SELECT Carga_CPV() into a;
-															-- FALTA LIMPIAR O ELIMINAR TMPVENTAS
+	DELETE FROM tmpventas;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -410,7 +406,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
---SELECT Carga_General (2010, 2019);
+-- SELECT Carga_General (2010, 2019);
 
 
 ---------------------------------------- Otras -------------------------------------------

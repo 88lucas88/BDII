@@ -211,8 +211,8 @@ BEGIN
 	-- carga clientes
 	SELECT MAX(nro_cliente) FROM "SISTEMA-1".clientes INTO "baseCantidadClientes";
 	IF "baseCantidadClientes" IS NULL THEN
-		--"baseCantidadClientes" := 0;
-		"baseCantidadClientes" := 10000;
+		"baseCantidadClientes" := 0;
+		--"baseCantidadClientes" := 10000;
 		--"baseCantidadClientes" := 100000;
 	END IF;
 	"baseCantidadClientes" := "baseCantidadClientes" + minimo;
@@ -331,8 +331,8 @@ BEGIN
 	-- carga clientes	
 	SELECT MAX(hex_to_int(cod_cliente)) FROM "SISTEMA-2".clientes INTO "baseCantidadClientes";
 	IF "baseCantidadClientes" IS NULL THEN
-		--"baseCantidadClientes" := 0;
-		"baseCantidadClientes" := 10000;
+		"baseCantidadClientes" := 0;
+		--"baseCantidadClientes" := 10000;
 		--"baseCantidadClientes" := 100000;
 	END IF;
 	"baseCantidadClientes" := "baseCantidadClientes" + minimo;
