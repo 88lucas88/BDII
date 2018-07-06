@@ -1,4 +1,4 @@
------------------------------------------------- Punto 3 -----------------------------------------------
+﻿------------------------------------------------ Punto 3 -----------------------------------------------
 
 ------------------------------------------- Implementación DW ------------------------------------------
 
@@ -18,7 +18,7 @@ CREATE TABLE CATEGORIA(
 	Id_subcategoria text NOT NULL,
 	descripcion varchar(30) NULL, 
 	CONSTRAINT PK_ID_CATEGORIA PRIMARY KEY (Id_Categoria, Id_subcategoria)
-);
+);--DROP TABLE CATEGORIA
 
 -- Tipo_Cliente (Id_Tipo, descripción)
 CREATE TABLE TIPO_CLIENTE(
@@ -28,11 +28,13 @@ CREATE TABLE TIPO_CLIENTE(
 );
 
 -- Carga de tablas que no utilizan tablas de equivalencia (Esto es una simplificación)
-SELECT dblink_connect('conect_suc1', 'port=5434 dbname=PatSur-Suc-1 user=postgres password=david'); -- david
-SELECT dblink_connect('conect_suc2', 'port=5434 dbname=PatSur-Suc-2 user=postgres password=david'); -- david
-SELECT dblink_connect('conect_suc3', 'port=5434 dbname=PatSur-Suc-3 user=postgres password=david'); -- david
+--SELECT dblink_connect('conect_suc1', 'port=5434 dbname=PatSur-Suc-1 user=postgres password=david'); -- david
+--SELECT dblink_connect('conect_suc2', 'port=5434 dbname=PatSur-Suc-2 user=postgres password=david'); -- david
+--SELECT dblink_connect('conect_suc3', 'port=5434 dbname=PatSur-Suc-3 user=postgres password=david'); -- david
 -- SELECT dblink_connect('conect_suc', 'hostaddr=192.168.1.105  port=5432 dbname=PatSur-Suc-1 user=postgres password=postgres'); --lucas
--- SELECT dblink_connect('conect_suc1', 'hostaddr=192.168.43.243 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres'); --lucas3
+ SELECT dblink_connect('conect_suc1', 'hostaddr=192.168.43.243 port=5432 dbname=PatSur-Suc-1 user=postgres password=postgres'); --lucas
+ SELECT dblink_connect('conect_suc2', 'hostaddr=192.168.43.243 port=5432 dbname=PatSur-Suc-2 user=postgres password=postgres'); --lucas
+ SELECT dblink_connect('conect_suc3', 'hostaddr=192.168.43.243 port=5432 dbname=PatSur-Suc-2 user=postgres password=postgres'); --lucas
 -- SELECT dblink_connect('conect_suc1', 'hostaddr=10.169.0.97 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres'); --lucas2
 -- SELECT dblink_connect('conect_suc1', 'hostaddr=10.2.0.159 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres');
 INSERT INTO MEDIO_PAGO (Id_MedioPago,descripción)
@@ -130,7 +132,7 @@ CREATE TABLE PRODUCTOS (
 	Id_subcategoria text NOT NULL,
 	nombre varchar(30) NOT NULL,
 	CONSTRAINT PK_PRODUCTOS PRIMARY KEY (Id_Producto)
-);
+);--DROP TABLE PRODUCTOS
 
 ALTER TABLE PRODUCTOS
 ADD CONSTRAINT FK_CATEGORIA FOREIGN KEY (Id_Categoria,Id_subcategoria)
@@ -216,7 +218,7 @@ DECLARE
 	cdw_ini integer;
 	
 BEGIN
-	SELECT dblink_connect('conect_suc', 'port=5434 dbname=' || suc_db || ' user=postgres password=david') into res_conect;
+	SELECT dblink_connect('conect_suc', 'hostaddr=192.168.43.243 port=5432 dbname=' || suc_db || ' user=postgres password=postgres') into res_conect;
 	cdw_ini := (SELECT max(cdw) FROM TECliente);
 	IF cdw_ini IS NULL THEN
 		cdw_ini := 0;
@@ -254,7 +256,7 @@ DECLARE
 	pdw_ini integer;
 	
 BEGIN
-	SELECT dblink_connect('conect_suc', 'port=5434 dbname=' || suc_db || ' user=postgres password=david') into res_conect;
+	SELECT dblink_connect('conect_suc', 'hostaddr=192.168.43.243 port=5432 dbname=' || suc_db || ' user=postgres password=postgres') into res_conect;
 	pdw_ini := (SELECT max(pdw) FROM TEProductos);
 	IF pdw_ini IS NULL THEN
 		pdw_ini := 0;
@@ -277,8 +279,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- SELECT CargaTEProductos(30, 'PatSur-Suc-1');
--- SELECT CargaTEProductos(10, 'PatSur-Suc-2');
--- SELECT CargaTEProductos(20, 'PatSur-Suc-3');
+-- SELECT CargaTEProductos(30, 'PatSur-Suc-2');
+-- SELECT CargaTEProductos(30, 'PatSur-Suc-3');
 
 -- Script ETL - Extraccion de datos de ventas desde el sistema de facturacion viejo
 CREATE OR REPLACE FUNCTION CargaTmpVentas(pSuc integer, pMes integer, pAño integer) RETURNS VOID AS
@@ -286,7 +288,7 @@ $$
 DECLARE
 	res_conect text;
 BEGIN
-	SELECT dblink_connect('conect_suc', 'port=5434 dbname=PatSur-Suc-' || CAST(pSuc as text) || ' user=postgres password=david') into res_conect;
+	SELECT dblink_connect('conect_suc', 'hostaddr=192.168.43.243 port=5432 dbname=PatSur-Suc-' || CAST(pSuc as text) || ' user=postgres password=postgres') into res_conect;
 	INSERT INTO tmpVentas(fecha_vta, Id_Factura, Id_Cliente, Id_Producto, Id_Sucursal, Id_medio_pago, monto_vendido, cantidad_vendida, nombre_producto,
 	Id_categoria, nombre_cliente, tipo_cliente)	
 	SELECT fecha_vta, Id_Factura, Id_Cliente, Id_Producto, Id_Sucursal, Id_medio_pago, monto_vendido, cantidad_vendida, nombre_producto, 
@@ -321,7 +323,7 @@ DECLARE
 	res_conect text;
 BEGIN	
 
-	SELECT dblink_connect('conect_suc', 'port=5434 dbname=PatSur-Suc-' || CAST(pSuc as text) || ' user=postgres password=david') into res_conect;
+	SELECT dblink_connect('conect_suc', 'hostaddr=192.168.43.243 port=5432 dbname=PatSur-Suc-' || CAST(pSuc as text) || ' user=postgres password=postgres') into res_conect;
 	INSERT INTO tmpventas(fecha_vta, Id_Factura, Id_Cliente, Id_producto, Id_Sucursal, Id_medio_pago, monto_vendido, cantidad_vendida, 
 		nombre_producto, Id_categoria, Id_subcategoria, nombre_cliente, tipo_cliente)
 	SELECT * FROM dblink ('conect_suc', 'SELECT fecha_vta, v.id_factura, c.cod_cliente, p.cod_producto, ' || CAST(pSuc AS text) || 'as Id_Sucursal, 
