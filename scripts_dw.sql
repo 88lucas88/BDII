@@ -168,7 +168,7 @@ CREATE TABLE TEProductos (
 	pns text DEFAULT NULL,
 	CONSTRAINT pk_teproductos PRIMARY KEY (pdw)
 );
-
+--DROP TABLE TEProductos
 -- TABLA TEMPORAL TMPVENTAS
 CREATE TABLE tmpVentas (
 	Id_Tiempo int,
@@ -203,13 +203,12 @@ DECLARE
 	cantidadEquivalentes  integer;
 	res_conect text;
 	cdw_ini integer;
-	cdw_tmp integer;
 	
 BEGIN
 	SELECT dblink_connect('conect_suc', 'hostaddr=192.168.1.105 port=5432 dbname=' || suc_db || ' user=postgres password=postgres') into res_conect;
 	cdw_ini := (SELECT max(cdw) FROM TECliente);
-	RAISE NOTICE 'CANTIDAD INICIAL %', cdw_ini;
-	RAISE NOTICE 'CANTIDAD INICIAL %', cdw_ini;
+	--RAISE NOTICE 'CANTIDAD INICIAL %', cdw_ini;
+	
 	IF cdw_ini IS NULL THEN
 		cdw_ini := 0;
 	END IF;
@@ -247,20 +246,31 @@ DECLARE
 	totalProductos integer;
 	cantidadEquivalentes  integer;
 	res_conect text;
+	pdw_ini integer;
+	
 BEGIN
-	SELECT dblink_connect('conect_suc', 'hostaddr=10.2.0.159 port=5432 dbname=' || suc_db || ' user=postgres password=postgres') into res_conect;
-	totalProductos := (SELECT * FROM dblink ('conect_suc', 'SELECT COUNT(nro_cliente) FROM "SISTEMA-1".Clientes') AS cn(nro_cliente int)) + 
-			(SELECT * FROM dblink ('conect_suc', 'SELECT COUNT(cod_cliente) FROM "SISTEMA-2".Clientes') AS cn(cod_cliente int)); 
-	cantidadEquivalentes := (totalProductos *  porcentajeEquivalentes)/100;
+	SELECT dblink_connect('conect_suc', 'hostaddr=192.168.1.105 port=5432 dbname=' || suc_db || ' user=postgres password=postgres') into res_conect;
+
+	pdw_ini := (SELECT max(pdw) FROM TEProductos);
+	--RAISE NOTICE 'CANTIDAD INICIAL %', pdw_ini;
+	
+	IF pdw_ini IS NULL THEN
+		pdw_ini := 0;
+	END IF;	
+	
 	INSERT INTO teproductos (pvs)
-	SELECT * FROM dblink ('conect_suc', 'SELECT nro_producto FROM "SISTEMA-1".producto') AS cn(nro_producto int);
+	SELECT * FROM dblink ('conect_suc', 'SELECT nro_producto FROM "SISTEMA-1".producto') AS cn(nro_producto int) WHERE cn.nro_producto not in (SELECT pvs FROM TEProductos WHERE pvs IS NOT NULL);
 	INSERT INTO teproductos (pns)
-	SELECT * FROM dblink ('conect_suc', 'SELECT cod_producto FROM "SISTEMA-2".producto') AS cn(cod_producto text);
+	SELECT * FROM dblink ('conect_suc', 'SELECT cod_producto FROM "SISTEMA-2".producto') AS cn(cod_producto text) WHERE cn.cod_producto not in (SELECT pns FROM TEProductos WHERE pns IS NOT NULL);
+
+	totalProductos := (SELECT max(pdw) FROM TEProductos) - pdw_ini;
+	cantidadEquivalentes := (totalProductos *  porcentajeEquivalentes)/100;
+
 	FOR r IN 1 .. cantidadEquivalentes LOOP
-		SELECT pdw FROM teproductos WHERE pns IS NOT NULL ORDER BY random() LIMIT 1 INTO IDproductoSN;
+		SELECT pdw FROM teproductos WHERE (pdw>pdw_ini and pns IS NOT NULL and pvs IS NULL) ORDER BY random() LIMIT 1 INTO IDproductoSN;
 		SELECT pns FROM teproductos WHERE pdw = IDproductoSN INTO productoSN;
 		DELETE FROM teproductos WHERE pdw = IDproductoSN;
-		SELECT pdw FROM teproductos WHERE pns IS NULL ORDER BY random() LIMIT 1 INTO IDproductoSV;
+		SELECT pdw FROM teproductos WHERE (pdw>pdw_ini and pns IS NULL and pvs IS NOT NULL) ORDER BY random() LIMIT 1 INTO IDproductoSV;
 		UPDATE teproductos SET pns=productoSN WHERE pdw=IDproductoSV;		
 	END LOOP;
 	SELECT dblink_disconnect('conect_suc') into res_conect;
