@@ -1,15 +1,9 @@
-﻿------------------------------------------------ Punto 3 -----------------------------------------------
+------------------------------------------------ Punto 3 -----------------------------------------------
 
 ------------------------------------------- Implementación DW ------------------------------------------
 
 
 CREATE EXTENSION dblink;
-
-SELECT dblink_connect('conect_suc1', 'port=5434 dbname=PatSur-Suc1 user=postgres password=david'); -- david
-SELECT dblink_connect('conect_suc', 'hostaddr=192.168.1.105  port=5432 dbname=PatSur-Suc-1 user=postgres password=postgres'); --lucas
-SELECT dblink_connect('conect_suc', 'hostaddr=192.168.43.243 port=5432 dbname=PatSur-Suc-1 user=postgres password=postgres'); --lucas3
-SELECT dblink_connect('conect_suc', 'hostaddr=10.169.0.135 port=5432 dbname=PatSur-Suc-1 user=postgres password=postgres'); --lucas2
-SELECT dblink_connect('conect_suc1', 'hostaddr=10.2.0.159 port=5432 dbname=PatSur-Suc1 user=postgres password=postgres');
 
 -- Medio_pago (Id_MedioPago, descripción)
 CREATE TABLE MEDIO_PAGO(
@@ -45,8 +39,16 @@ INSERT INTO MEDIO_PAGO (Id_MedioPago,descripción)
 	SELECT cod_medio_pago,descripción 
 	FROM dblink('conect_suc1','SELECT cod_medio_pago, descripción FROM "SISTEMA-2".MEDIO_PAGO') AS medio(cod_medio_pago int, descripción varchar(30));
 INSERT INTO CATEGORIA (Id_Categoria, Id_subcategoria, descripcion)
-	SELECT cod_categoria, cod_subcategoria, descripcion 
-	FROM dblink('conect_suc','SELECT cod_categoria, cod_subcategoria, descripcion FROM "SISTEMA-2".CATEGORIA') AS categoria(cod_categoria text, cod_subcategoria text, descripcion varchar(30));
+	SELECT DISTINCT cod_categoria, cod_subcategoria, descripcion FROM
+	((SELECT cod_categoria, cod_subcategoria, descripcion 
+	FROM dblink('conect_suc1','SELECT cod_categoria, cod_subcategoria, descripcion FROM "SISTEMA-2".CATEGORIA') AS categoria(cod_categoria text, cod_subcategoria text, descripcion varchar(30)))
+	UNION ALL
+	(SELECT cod_categoria, cod_subcategoria, descripcion 
+	FROM dblink('conect_suc2','SELECT cod_categoria, cod_subcategoria, descripcion FROM "SISTEMA-2".CATEGORIA') AS categoria(cod_categoria text, cod_subcategoria text, descripcion varchar(30))) 
+	UNION ALL
+	(SELECT cod_categoria, cod_subcategoria, descripcion 
+	FROM dblink('conect_suc3','SELECT cod_categoria, cod_subcategoria, descripcion FROM "SISTEMA-2".CATEGORIA') AS categoria(cod_categoria text, cod_subcategoria text, descripcion varchar(30)))
+	) AS f;
 INSERT INTO TIPO_CLIENTE (Id_Tipo, descripcion)
 	SELECT cod_tipo, descripcion 
 	FROM dblink('conect_suc1','SELECT cod_tipo, descripcion FROM "SISTEMA-2".TIPO_CLIENTE') AS tipo_cliente(cod_tipo int, descripcion varchar(30));
@@ -214,7 +216,7 @@ DECLARE
 	cdw_ini integer;
 	
 BEGIN
-	SELECT dblink_connect('conect_suc', 'hostaddr=192.168.43.243 port=5432 dbname=' || suc_db || ' user=postgres password=postgres') into res_conect;
+	SELECT dblink_connect('conect_suc', 'port=5434 dbname=' || suc_db || ' user=postgres password=david') into res_conect;
 	cdw_ini := (SELECT max(cdw) FROM TECliente);
 	IF cdw_ini IS NULL THEN
 		cdw_ini := 0;
@@ -234,9 +236,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT CargaTEClientes(20, 'PatSur-Suc-1');
-SELECT CargaTEClientes(20, 'PatSur-Suc-2');
-SELECT CargaTEClientes(20, 'PatSur-Suc-3');
+-- SELECT CargaTEClientes(25, 'PatSur-Suc-1');
+-- SELECT CargaTEClientes(20, 'PatSur-Suc-2');
+-- SELECT CargaTEClientes(10, 'PatSur-Suc-3');
 
 -- Script ETL - Carga tabla de equivalencia de productos
 CREATE OR REPLACE FUNCTION CargaTEProductos(porcentajeEquivalentes int, suc_db text) RETURNS VOID AS
@@ -252,8 +254,7 @@ DECLARE
 	pdw_ini integer;
 	
 BEGIN
-	SELECT dblink_connect('conect_suc', 'hostaddr=192.168.43.243 port=5432 dbname=' || suc_db || ' user=postgres password=postgres') into res_conect;
-
+	SELECT dblink_connect('conect_suc', 'port=5434 dbname=' || suc_db || ' user=postgres password=david') into res_conect;
 	pdw_ini := (SELECT max(pdw) FROM TEProductos);
 	IF pdw_ini IS NULL THEN
 		pdw_ini := 0;
@@ -285,7 +286,7 @@ $$
 DECLARE
 	res_conect text;
 BEGIN
-	SELECT dblink_connect('conect_suc', 'hostaddr=192.168.43.243 port=5432 dbname=PatSur-Suc-' || CAST(pSuc as text) || ' user=postgres password=postgres') into res_conect;
+	SELECT dblink_connect('conect_suc', 'port=5434 dbname=PatSur-Suc-' || CAST(pSuc as text) || ' user=postgres password=david') into res_conect;
 	INSERT INTO tmpVentas(fecha_vta, Id_Factura, Id_Cliente, Id_Producto, Id_Sucursal, Id_medio_pago, monto_vendido, cantidad_vendida, nombre_producto,
 	Id_categoria, nombre_cliente, tipo_cliente)	
 	SELECT fecha_vta, Id_Factura, Id_Cliente, Id_Producto, Id_Sucursal, Id_medio_pago, monto_vendido, cantidad_vendida, nombre_producto, 
@@ -320,8 +321,7 @@ DECLARE
 	res_conect text;
 BEGIN	
 
-	SELECT dblink_connect('conect_suc', 'hostaddr=192.168.43.243 port=5432 dbname=PatSur-Suc-' || CAST(pSuc as text) || ' user=postgres password=postgres') into res_conect;
-
+	SELECT dblink_connect('conect_suc', 'port=5434 dbname=PatSur-Suc-' || CAST(pSuc as text) || ' user=postgres password=david') into res_conect;
 	INSERT INTO tmpventas(fecha_vta, Id_Factura, Id_Cliente, Id_producto, Id_Sucursal, Id_medio_pago, monto_vendido, cantidad_vendida, 
 		nombre_producto, Id_categoria, Id_subcategoria, nombre_cliente, tipo_cliente)
 	SELECT * FROM dblink ('conect_suc', 'SELECT fecha_vta, v.id_factura, c.cod_cliente, p.cod_producto, ' || CAST(pSuc AS text) || 'as Id_Sucursal, 
