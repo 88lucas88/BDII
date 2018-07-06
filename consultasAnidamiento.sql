@@ -2,7 +2,7 @@
 ------------------------------------------------ Punto 4 -----------------------------------------------
 
 -- Venta vista por mes o por año, por sucursal, por región, por cliente y demás combinaciones entre las perspectivas.
-SELECT T.mes, T.año, S.descripcion as sucursal, C.descripcion as Ciudad, CL.nombre nombre_cliente, 
+SELECT T.mes, T.año, S.id_sucursal, S.descripcion as sucursal, C.id_ciudad, C.descripcion as Ciudad, CL.id_cliente, CL.nombre nombre_cliente, 
 sum(V.monto_vendido) as monto_total_vendido, sum(V.cantidad_vendida) as cant_total_vendida
 FROM ventas V, tiempo T, sucursal S, ciudad C, clientes CL
 WHERE V.id_tiempo = T.id_tiempo and V.id_sucursal = S.id_sucursal
